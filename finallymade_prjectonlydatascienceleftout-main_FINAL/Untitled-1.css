@@ -1,0 +1,735 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-warn: var(--warn);
+}
+
+:root {
+  --radius: 0.625rem;
+  /* Creamy light theme */
+  --background: #fbfaf6;
+  --background-2: #f1ede2;
+  --foreground: #1a1a2e;
+  --card: #f6f2e6;
+  --card-foreground: #1a1a2e;
+  --popover: #fbfaf6;
+  --popover-foreground: #1a1a2e;
+  --primary: #4f46e5;
+  --primary-foreground: #fbfaf6;
+  --secondary: #ece6d4;
+  --secondary-foreground: #1a1a2e;
+  --muted: #ece6d4;
+  --muted-foreground: #6b6a80;
+  --accent: #4f46e5;
+  --accent-foreground: #fbfaf6;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #fbfaf6;
+  --border: rgba(26, 26, 46, 0.14);
+  --input: rgba(26, 26, 46, 0.14);
+  --ring: #4f46e5;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: #fbfaf6;
+  --sidebar-foreground: #1a1a2e;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #fbfaf6;
+  --sidebar-accent: #ece6d4;
+  --sidebar-accent-foreground: #1a1a2e;
+  --sidebar-border: rgba(26, 26, 46, 0.14);
+  --sidebar-ring: #4f46e5;
+
+  --space-bg: #fbfaf6;
+  --space-bg-2: #f1ede2;
+  --star-color: rgba(79, 70, 229, 0.55);
+  --orbit-line: rgba(79, 70, 229, 0.28);
+  --orbit-label: rgba(79, 70, 229, 0.72);
+  --sun-core: #ffffff;
+  --sun-glow-1: #a5b4fc;
+  --sun-glow-2: #4f46e5;
+  --comet-color: rgba(79, 70, 229, 0.9);
+
+  /* Landing page extras */
+  --border-strong: rgba(79, 70, 229, 0.2);
+  --cta-border: rgba(79, 70, 229, 0.4);
+  --cta-muted-border: rgba(0, 0, 0, 0.12);
+  --wave: rgba(79, 70, 229, 0.06);
+  --path: rgba(79, 70, 229, 0.18);
+  --nav-bg: rgba(251, 250, 246, 0.95);
+  --node-bg: #f1ede2;
+  --node-border: rgba(79, 70, 229, 0.2);
+  --warn: #b45309;
+  --stat-bar-bg: rgba(79, 70, 229, 0.04);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --background-2: #000000;
+  --foreground: #ffffff;
+  --card: #111111;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: rgba(255, 255, 255, 0.6);
+  --accent: #38e4d9;
+  --accent-foreground: #0a0a0a;
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: rgba(255, 255, 255, 0.5);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: rgba(255, 255, 255, 0.4);
+
+  --space-bg: #0a0a0a;
+  --space-bg-2: #000000;
+  --star-color: rgba(220, 245, 245, 0.85);
+  --orbit-line: rgba(255, 255, 255, 0.16);
+  --orbit-label: rgba(220, 245, 245, 0.72);
+  --sun-core: #fff6d5;
+  --sun-glow-1: #ffd47a;
+  --sun-glow-2: #ff8a1f;
+  --comet-color: rgba(220, 245, 245, 0.95);
+
+  /* Landing page extras */
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --cta-border: rgba(255, 255, 255, 0.3);
+  --cta-muted-border: rgba(255, 255, 255, 0.12);
+  --wave: rgba(255, 255, 255, 0.04);
+  --path: rgba(255, 255, 255, 0.1);
+  --nav-bg: rgba(0, 0, 0, 0.95);
+  --node-bg: #0a0a0a;
+  --node-border: rgba(255, 255, 255, 0.15);
+  --warn: #d97706;
+  --stat-bar-bg: rgba(255, 255, 255, 0.03);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+/* ================= Landing page animations ================= */
+@keyframes wave-1 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+@keyframes wave-2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(18px); }
+}
+@keyframes fade-cycle {
+  0%, 90%, 100% { opacity: 0; }
+  10%, 80% { opacity: 1; }
+}
+@keyframes dot-path {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes page-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-fade { animation: page-fade 300ms ease; }
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+.glow-card { position: relative; isolation: isolate; overflow: hidden; }
+.glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  background: radial-gradient(circle at 30% 30%, var(--glow-color, #4f46e5) 0%, transparent 60%);
+  filter: blur(32px) saturate(160%);
+  animation: glow-pulse 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.glow-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 36px color-mix(in oklab, var(--glow-color, #4f46e5) 55%, transparent),
+    0 0 28px color-mix(in oklab, var(--glow-color, #4f46e5) 32%, transparent);
+  pointer-events: none;
+}
+
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  animation: marquee-x 4s linear infinite;
+}
+.marquee-mask {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* ================= Original utilities (unchanged) ================= */
+@utility josaa-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px),
+    radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 55%);
+  background-size: 96px 96px, 96px 96px, 100% 100%;
+}
+
+@utility branch-conveyor {
+  animation: branch-conveyor 18s linear infinite;
+}
+
+@utility scan-beam {
+  transition: left 120ms linear;
+}
+
+@utility startup-marquee {
+  animation: startup-marquee 22s linear infinite;
+}
+
+@utility glow-green {
+  box-shadow: 0 0 18px -4px oklch(0.72 0.18 152 / 0.7), inset 0 0 14px -6px oklch(0.72 0.18 152 / 0.6);
+  border-color: oklch(0.72 0.18 152 / 0.55);
+}
+@utility glow-red {
+  box-shadow: 0 0 18px -4px oklch(0.7 0.22 25 / 0.7), inset 0 0 14px -6px oklch(0.7 0.22 25 / 0.6);
+  border-color: oklch(0.7 0.22 25 / 0.55);
+}
+@utility glow-yellow {
+  box-shadow: 0 0 18px -4px oklch(0.82 0.17 88 / 0.7), inset 0 0 14px -6px oklch(0.82 0.17 88 / 0.6);
+  border-color: oklch(0.82 0.17 88 / 0.55);
+}
+
+/* ================= Original keyframes (unchanged) ================= */
+@keyframes branch-conveyor {
+  from { transform: translate3d(-33%, -50%, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+
+@keyframes startup-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes feed-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orbit-spin-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes scroll-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50%      { transform: translateY(6px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .branch-conveyor, .startup-marquee { animation: none; }
+}
+
+/* ================= Solar-system hero (unchanged) ================= */
+@keyframes orbit-travel {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
+}
+@keyframes planet-counter {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+@keyframes sun-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.04); filter: brightness(1.12); }
+}
+@keyframes comet-drift-a {
+  0%   { transform: translate(-30vw, -10vh) rotate(20deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(60vw, 40vh) rotate(20deg); opacity: 0; }
+}
+@keyframes comet-drift-b {
+  0%   { transform: translate(80vw, 90vh) rotate(-160deg); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate(-20vw, 20vh) rotate(-160deg); opacity: 0; }
+}
+@keyframes comet-drift-c {
+  0%   { transform: translate(70vw, -20vh) rotate(140deg); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translate(-10vw, 70vh) rotate(140deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planet-orbit, .planet-spin, .sun-pulse, .comet, .twinkle {
+    animation: none !important;
+  }
+}
+
+
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-warn: var(--warn);
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: #fbfaf6;
+  --background-2: #f1ede2;
+  --foreground: #1a1a2e;
+  --card: #ffffff;
+  --card-foreground: #1a1a2e;
+  --popover: #fbfaf6;
+  --popover-foreground: #1a1a2e;
+  --primary: #4f46e5;
+  --primary-foreground: #fbfaf6;
+  --secondary: #ece6d4;
+  --secondary-foreground: #1a1a2e;
+  --muted: #f1ede2;
+  --muted-foreground: #6b7280;
+  --accent: #4f46e5;
+  --accent-foreground: #fbfaf6;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: #fbfaf6;
+  --border: rgba(79, 70, 229, 0.12);
+  --input: rgba(26, 26, 46, 0.14);
+  --ring: #4f46e5;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: #fbfaf6;
+  --sidebar-foreground: #1a1a2e;
+  --sidebar-primary: #4f46e5;
+  --sidebar-primary-foreground: #fbfaf6;
+  --sidebar-accent: #ece6d4;
+  --sidebar-accent-foreground: #1a1a2e;
+  --sidebar-border: rgba(26, 26, 46, 0.14);
+  --sidebar-ring: #4f46e5;
+
+  --space-bg: #fbfaf6;
+  --space-bg-2: #f1ede2;
+  --star-color: rgba(79, 70, 229, 0.55);
+  --orbit-line: rgba(79, 70, 229, 0.28);
+  --orbit-label: rgba(79, 70, 229, 0.72);
+  --sun-core: #ffffff;
+  --sun-glow-1: #a5b4fc;
+  --sun-glow-2: #4f46e5;
+  --comet-color: rgba(79, 70, 229, 0.9);
+
+  --border-strong: rgba(79, 70, 229, 0.2);
+  --cta-border: rgba(79, 70, 229, 0.4);
+  --cta-muted-border: rgba(0, 0, 0, 0.12);
+  --wave: rgba(79, 70, 229, 0.06);
+  --path: rgba(79, 70, 229, 0.18);
+  --nav-bg: rgba(251, 250, 246, 0.95);
+  --node-bg: #f1ede2;
+  --node-border: rgba(79, 70, 229, 0.2);
+  --warn: #b45309;
+  --stat-bar-bg: rgba(79, 70, 229, 0.04);
+}
+
+.dark {
+  --background: #0a0a0a;
+  --background-2: #000000;
+  --foreground: #ffffff;
+  --card: #111111;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #111111;
+  --muted-foreground: #8a8f98;
+  --accent: #ffffff;
+  --accent-foreground: #0a0a0a;
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.15);
+  --ring: rgba(255, 255, 255, 0.5);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: rgba(255, 255, 255, 0.4);
+
+  --space-bg: #0a0a0a;
+  --space-bg-2: #000000;
+  --star-color: rgba(220, 245, 245, 0.85);
+  --orbit-line: rgba(255, 255, 255, 0.16);
+  --orbit-label: rgba(220, 245, 245, 0.72);
+  --sun-core: #fff6d5;
+  --sun-glow-1: #ffd47a;
+  --sun-glow-2: #ff8a1f;
+  --comet-color: rgba(220, 245, 245, 0.95);
+
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --cta-border: rgba(255, 255, 255, 0.3);
+  --cta-muted-border: rgba(255, 255, 255, 0.12);
+  --wave: rgba(255, 255, 255, 0.04);
+  --path: rgba(255, 255, 255, 0.1);
+  --nav-bg: rgba(0, 0, 0, 0.95);
+  --node-bg: #0a0a0a;
+  --node-border: rgba(255, 255, 255, 0.15);
+  --warn: #d97706;
+  --stat-bar-bg: rgba(255, 255, 255, 0.03);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: linear-gradient(180deg, var(--background) 0%, var(--background-2) 100%);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  transition: background 250ms ease, color 250ms ease;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Used to wrap the solar-system + PDF-processing screens so they render with
+   the same plain system font/weight as new-cosmic-career, instead of
+   inheriting this app's Inter/JetBrains-Mono branding. */
+.cosmic-scope {
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-weight: 400;
+}
+.cosmic-scope .font-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@keyframes wave-1 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+@keyframes wave-2 {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(18px); }
+}
+@keyframes fade-cycle {
+  0%, 90%, 100% { opacity: 0; }
+  10%, 80% { opacity: 1; }
+}
+@keyframes dot-path {
+  0% { offset-distance: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 0; }
+}
+@keyframes page-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.page-fade { animation: page-fade 300ms ease; }
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+.glow-card { position: relative; isolation: isolate; overflow: hidden; }
+.glow-card::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  z-index: -1;
+  background: radial-gradient(circle at 30% 30%, var(--glow-color, #4f46e5) 0%, transparent 60%);
+  filter: blur(32px) saturate(160%);
+  animation: glow-pulse 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+.glow-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 36px color-mix(in oklab, var(--glow-color, #4f46e5) 55%, transparent),
+    0 0 28px color-mix(in oklab, var(--glow-color, #4f46e5) 32%, transparent);
+  pointer-events: none;
+}
+
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  gap: 6px;
+  width: max-content;
+  animation: marquee-x 4s linear infinite;
+}
+.marquee-mask {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+          mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}
+
+@utility josaa-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--border) 55%, transparent) 1px, transparent 1px),
+    radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--primary) 9%, transparent), transparent 55%);
+  background-size: 96px 96px, 96px 96px, 100% 100%;
+}
+
+@utility branch-conveyor {
+  animation: branch-conveyor 18s linear infinite;
+}
+
+@utility scan-beam {
+  transition: left 120ms linear;
+}
+
+@utility startup-marquee {
+  animation: startup-marquee 22s linear infinite;
+}
+
+@utility glow-green {
+  box-shadow: 0 0 18px -4px oklch(0.72 0.18 152 / 0.7), inset 0 0 14px -6px oklch(0.72 0.18 152 / 0.6);
+  border-color: oklch(0.72 0.18 152 / 0.55);
+}
+@utility glow-red {
+  box-shadow: 0 0 18px -4px oklch(0.7 0.22 25 / 0.7), inset 0 0 14px -6px oklch(0.7 0.22 25 / 0.6);
+  border-color: oklch(0.7 0.22 25 / 0.55);
+}
+@utility glow-yellow {
+  box-shadow: 0 0 18px -4px oklch(0.82 0.17 88 / 0.7), inset 0 0 14px -6px oklch(0.82 0.17 88 / 0.6);
+  border-color: oklch(0.82 0.17 88 / 0.55);
+}
+
+@keyframes branch-conveyor {
+  from { transform: translate3d(-33%, -50%, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}
+
+@keyframes startup-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+@keyframes feed-rise {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes orbit-spin-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+@keyframes scroll-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50%      { transform: translateY(6px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .branch-conveyor, .startup-marquee { animation: none; }
+}
+
+/* ================= Solar-system hero ================= */
+@keyframes orbit-travel {
+  from { offset-distance: 0%; }
+  to   { offset-distance: 100%; }
+}
+@keyframes planet-counter {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+@keyframes sun-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+  50%      { transform: translate(-50%, -50%) scale(1.04); filter: brightness(1.12); }
+}
+@keyframes comet-drift-a {
+  0%   { transform: translate(-30vw, -10vh) rotate(20deg); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(60vw, 40vh) rotate(20deg); opacity: 0; }
+}
+@keyframes comet-drift-b {
+  0%   { transform: translate(80vw, 90vh) rotate(-160deg); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate(-20vw, 20vh) rotate(-160deg); opacity: 0; }
+}
+@keyframes comet-drift-c {
+  0%   { transform: translate(70vw, -20vh) rotate(140deg); opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { transform: translate(-10vw, 70vh) rotate(140deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planet-orbit, .planet-spin, .sun-pulse, .comet, .twinkle {
+    animation: none !important;
+  }
+}
+
+
+
