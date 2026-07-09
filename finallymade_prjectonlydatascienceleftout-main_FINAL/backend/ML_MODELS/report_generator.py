@@ -389,10 +389,11 @@ def generate_chart(df_results):
         fig.tight_layout()
 
     # Save figure into memory buffer as PNG at 150 DPI
-    plt.savefig(buffer, format="PNG", dpi=150, bbox_inches="tight",
+    fig.savefig(buffer, format="PNG", dpi=150, bbox_inches="tight",
                 facecolor="white")
     # Seek back to start so ReportLab reads from beginning of buffer
     buffer.seek(0)
+
     plt.close(fig)
 
     return buffer
@@ -675,12 +676,13 @@ def build_chart_page(story, df_results, styles):
     Appends the chart page to story.
     Embeds Matplotlib chart as an Image flowable inside the PDF.
     """
-
+    print("DEBUG columns:", df_results.columns.tolist() if df_results is not None else None)
+    print("DEBUG chance values:", df_results["Chance"].unique() if df_results is not None and not df_results.empty else None)
     story.append(PageBreak())
     story.append(Paragraph("Admission Chances Overview", styles["title"]))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.black))
     story.append(Spacer(1, 12))
-
+     
     # Chart follows the same safe + borderline filter as the results pages.
     if df_results is None or df_results.empty:
         story.append(Paragraph("No chart data available.", styles["body"]))
@@ -703,12 +705,29 @@ def build_chart_page(story, df_results, styles):
 
     # Generate chart and get PNG buffer from Matplotlib
     chart_buffer = generate_chart(df_chart)
+    if chart_buffer is not None:
+        with open("real_chart_debug.png", "wb") as f:
+            f.write(chart_buffer.getvalue())
+        chart_buffer.seek(0)   # reset pointer since we just read it
+
     if chart_buffer is None:
         story.append(Paragraph("No chart data available.", styles["body"]))
         return
 
     # Image flowable: reads directly from in-memory buffer
-    chart_image = Image(chart_buffer, width=15 * cm, height=11 * cm)
+    from PIL import Image as PILImage
+
+    # Read actual image dimensions to preserve aspect ratio
+    chart_buffer.seek(0)
+    pil_img = PILImage.open(chart_buffer)
+    img_width, img_height = pil_img.size
+    chart_buffer.seek(0)
+
+    # Fix width to 16cm, scale height proportionally
+    display_width = 16 * cm
+    display_height = display_width * (img_height / img_width)
+
+    chart_image = Image(chart_buffer, width=display_width, height=display_height)
     story.append(chart_image)
 
     story.append(Spacer(1, 14))
