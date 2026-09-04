@@ -16,6 +16,95 @@ export interface GeminiTaskResponse {
  */
 export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskResponse {
   switch (task) {
+    case "agent_orchestrate": {
+      const text = (payload.userMessage || "").toLowerCase();
+      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || text.includes("connect");
+      const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat" }> = [];
+
+      if (isBooking) {
+        const available = payload.availableMentors || MENTORS;
+        available.forEach((m: any) => {
+          const lowerName = m.name.toLowerCase();
+          const firstName = lowerName.split(" ")[0];
+          // Check for names or aliases (e.g., 'raj', 'kabir', 'riya', 'aarav')
+          const matchesMentor = text.includes(firstName) || 
+            (lowerName.includes("raj") && text.includes("raj")) || 
+            (lowerName.includes("kabir") && text.includes("kabir"));
+          
+          if (matchesMentor) {
+            // Check whether 'video' or 'chat' is closer before this mentor
+            let mode: "video" | "chat" = "video";
+            const mentorIdx = text.indexOf(firstName);
+            const prefix = mentorIdx >= 0 ? text.slice(Math.max(0, mentorIdx - 35), mentorIdx) : text;
+            const lastVideoIdx = prefix.lastIndexOf("video");
+            const lastChatIdx = prefix.lastIndexOf("chat");
+
+            if (lastChatIdx >= 0 && lastChatIdx > lastVideoIdx) {
+              mode = "chat";
+            } else if (lastVideoIdx >= 0 && lastVideoIdx >= lastChatIdx) {
+              mode = "video";
+            } else if (text.includes("video") && !text.includes("chat")) {
+              mode = "video";
+            } else if (text.includes("chat") && !text.includes("video")) {
+              mode = "chat";
+            }
+
+            if (!selectedMentors.some((sm) => sm.helperId === m.id)) {
+              selectedMentors.push({
+                helperId: m.id,
+                helperName: m.name,
+                mode,
+              });
+            }
+          }
+        });
+      }
+
+      const doubtList = payload.currentContext?.specificDoubts || [
+        "Core placements and off-campus IT eligibility",
+        "Hostel environment & senior mentorship",
+        "Curriculum flexibility & branch change threshold"
+      ];
+
+      return {
+        success: true,
+        isFallback: true,
+        data: {
+          isBookingIntent: isBooking && selectedMentors.length > 0,
+          reply: isBooking && selectedMentors.length > 0
+            ? `I have dispatched your booking request with your query list to ${selectedMentors.map((m) => `${m.helperName} (${m.mode === "video" ? "Video Session" : "Chat Session"})`).join(" and ")}. Their customized quotes are streaming in now!`
+            : "I've analyzed your queries regarding college admissions and core vs IT placement trade-offs. Check out our recommended seniors below, or tell me 'book video session with Raj and chat session with Kabir' to request quotes directly through me.",
+          selectedMentors,
+          extractedProfile: {
+            consideredColleges: payload.currentContext?.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
+            preferredBranches: payload.currentContext?.preferredBranches || ["Mechanical Engineering"],
+            primaryPriorities: payload.currentContext?.primaryPriorities || ["Core Placements", "Hostel Culture"],
+            specificDoubts: doubtList,
+          },
+        },
+      };
+    }
+
+    case "helper_quote": {
+      const mode = payload.mode || "video";
+      const isVideo = mode === "video";
+      const price = isVideo ? 380 : 200;
+      const duration = isVideo ? 30 : 20;
+
+      return {
+        success: true,
+        isFallback: true,
+        data: {
+          priceInr: price,
+          estimatedDurationMin: duration,
+          scopeSummary: isVideo
+            ? `30-minute direct video call addressing your specific queries: ${payload.questions?.slice(0, 2).join("; ") || "campus placement dynamics"}.`
+            : `20-minute focused direct text chat covering your specific queries: ${payload.questions?.slice(0, 2).join("; ") || "branch realities"}.`,
+          helperNote: `I reviewed your questions. Happy to share my honest benchmarks and experience from ${payload.helperCollege || "campus"}.`,
+        },
+      };
+    }
+
     case "college_intake": {
       const text = (payload.userMessage || "").toLowerCase();
       const extractedColleges: string[] = [];

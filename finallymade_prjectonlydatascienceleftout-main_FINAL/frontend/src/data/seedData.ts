@@ -41,6 +41,7 @@ export interface ReceivedQuote {
   estimatedDurationMin: number;
   scopeSummary: string;
   helperNote: string;
+  communicationMode?: "video" | "chat";
   status: "sent" | "accepted" | "declined";
   createdAt: string;
 }

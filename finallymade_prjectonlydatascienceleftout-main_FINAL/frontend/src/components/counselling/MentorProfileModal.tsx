@@ -7,17 +7,17 @@ export function MentorProfileModal({
   matchPercentage = 94,
   matchReasons = [],
   isOpen,
+  selectedMode = null,
   onClose,
-  onStartFreeChat,
-  onRequestQuote,
+  onSelectForAgent,
 }: {
   mentor: MentorProfile | null;
   matchPercentage?: number;
   matchReasons?: string[];
   isOpen: boolean;
+  selectedMode?: "video" | "chat" | null;
   onClose: () => void;
-  onStartFreeChat: (mentor: MentorProfile) => void;
-  onRequestQuote?: (mentor: MentorProfile, service: ServiceDefinition) => void;
+  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat") => void;
 }) {
   const [selectedTab, setSelectedTab] = useState<"all" | "call" | "chat" | "audit">("all");
 
@@ -147,21 +147,35 @@ export function MentorProfileModal({
               </div>
             </div>
 
-            {/* Primary Action Button */}
-            <div className="pt-2 border-t border-border/60">
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onStartFreeChat(mentor);
-                }}
-                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold py-3 text-center transition shadow-sm flex items-center justify-center gap-2"
-              >
-                <span>Ask Before Booking — Free</span>
-                <span>→</span>
-              </button>
-              <span className="font-mono text-[9px] text-muted-foreground text-center block mt-1.5">
-                Verify scope and fit at 0 cost before requesting a quote
+            {/* Primary Action Button - Agent Mediated */}
+            <div className="pt-2 border-t border-border/60 space-y-2">
+              <div className="mono text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400">
+                ◆ Book via Central AI Agent
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onSelectForAgent?.(mentor, "video");
+                  }}
+                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold py-2.5 text-center transition shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <span>📹 Video Call</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onSelectForAgent?.(mentor, "chat");
+                  }}
+                  className="rounded-xl border border-border bg-background hover:border-blue-500 text-foreground font-mono text-xs font-bold py-2.5 text-center transition flex items-center justify-center gap-1.5"
+                >
+                  <span>💬 Text Chat</span>
+                </button>
+              </div>
+              <span className="font-mono text-[9px] text-muted-foreground text-center block">
+                The AI Agent will dispatch your queries directly to {mentor.name.split(" ")[0]}
               </span>
             </div>
           </div>
@@ -263,17 +277,11 @@ export function MentorProfileModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          if (svc.isFree) {
-                            onStartFreeChat(mentor);
-                          } else if (onRequestQuote) {
-                            onRequestQuote(mentor, svc);
-                          } else {
-                            onStartFreeChat(mentor);
-                          }
+                          onSelectForAgent?.(mentor, svc.format === "chat" ? "chat" : "video");
                         }}
-                        className="rounded-lg bg-foreground hover:bg-neutral-800 text-background font-mono text-[10px] font-bold px-3 py-1.5 transition flex items-center gap-1 cursor-pointer"
+                        className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-[10px] font-bold px-3 py-1.5 transition flex items-center gap-1 cursor-pointer"
                       >
-                        <span>{svc.isFree ? "Ask Free" : "Book Quote"}</span>
+                        <span>Request via Agent</span>
                         <span>→</span>
                       </button>
                     </div>

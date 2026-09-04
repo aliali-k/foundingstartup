@@ -5,22 +5,31 @@ export function MentorCard({
   mentor,
   matchPercentage = 92,
   reasons = [],
-  onAskForFree,
+  selectedMode = null,
+  onSelectForAgent,
+  onDeselect,
   onViewProfile,
 }: {
   index: number;
   mentor: MentorProfile;
   matchPercentage?: number;
   reasons?: string[];
-  onAskForFree: (mentor: MentorProfile) => void;
+  selectedMode?: "video" | "chat" | null;
+  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat") => void;
+  onDeselect?: (mentor: MentorProfile) => void;
   onViewProfile: (mentor: MentorProfile) => void;
 }) {
   const displayReasons = reasons.length > 0 ? reasons.slice(0, 3) : mentor.highlightMatchReasons.slice(0, 3);
+  const isSelected = selectedMode !== null;
 
   return (
     <div
       onClick={() => onViewProfile(mentor)}
-      className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-1 hover:border-blue-500/60 shadow-xs cursor-pointer"
+      className={`group relative flex flex-col justify-between rounded-2xl border bg-card p-5 transition-all duration-200 hover:-translate-y-1 shadow-xs cursor-pointer ${
+        isSelected
+          ? "border-blue-500 ring-2 ring-blue-500/20 bg-blue-500/5 dark:bg-blue-950/10"
+          : "border-border hover:border-blue-500/60"
+      }`}
     >
       {/* Top Row: Index + Match Badge + Demo Badge */}
       <div>
@@ -32,6 +41,11 @@ export function MentorCard({
             <span className="mono text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
               {matchPercentage}% MATCH
             </span>
+            {isSelected && (
+              <span className="mono text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider bg-blue-500 text-white shadow-xs">
+                {selectedMode === "video" ? "📹 Video Session" : "💬 Chat Session"}
+              </span>
+            )}
           </div>
 
           <span className="mono text-[8px] uppercase tracking-wider px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border font-semibold">
@@ -109,27 +123,59 @@ export function MentorCard({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAskForFree(mentor);
-            }}
-            className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-[11px] font-bold py-2 text-center transition shadow-xs flex items-center justify-center gap-1 cursor-pointer"
-          >
-            <span>Ask Free</span>
-            <span>→</span>
-          </button>
+        {/* Agent Communication Only Actions */}
+        <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedMode === "video") {
+                  onDeselect?.(mentor);
+                } else {
+                  onSelectForAgent?.(mentor, "video");
+                }
+              }}
+              className={`rounded-lg py-1.5 px-2 text-center font-mono text-[10.5px] font-bold transition flex items-center justify-center gap-1 cursor-pointer border ${
+                selectedMode === "video"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-background border-border text-foreground hover:border-blue-500 hover:text-blue-500"
+              }`}
+            >
+              <span>📹 Video</span>
+              {selectedMode === "video" ? <span>✓</span> : <span className="opacity-60 text-[9px]">30m</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedMode === "chat") {
+                  onDeselect?.(mentor);
+                } else {
+                  onSelectForAgent?.(mentor, "chat");
+                }
+              }}
+              className={`rounded-lg py-1.5 px-2 text-center font-mono text-[10.5px] font-bold transition flex items-center justify-center gap-1 cursor-pointer border ${
+                selectedMode === "chat"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-background border-border text-foreground hover:border-blue-500 hover:text-blue-500"
+              }`}
+            >
+              <span>💬 Chat</span>
+              {selectedMode === "chat" ? <span>✓</span> : <span className="opacity-60 text-[9px]">20m</span>}
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onViewProfile(mentor);
             }}
-            className="rounded-lg border border-border/90 hover:border-neutral-400 dark:hover:border-neutral-600 bg-background text-foreground font-mono text-[10.5px] font-bold py-2 text-center transition hover:bg-muted/40 cursor-pointer"
+            className="w-full rounded-lg border border-border/80 hover:border-neutral-400 dark:hover:border-neutral-600 bg-background text-foreground font-mono text-[10px] font-bold py-1.5 text-center transition hover:bg-muted/40 cursor-pointer"
           >
-            View Profile
+            View Profile & Experience →
           </button>
         </div>
       </div>

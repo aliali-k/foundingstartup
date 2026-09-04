@@ -75,6 +75,120 @@ export function appendChatMessage(requestId: string, msg: ChatMessage) {
   saveToStorage(CHATS_KEY, allChats);
 }
 
+export interface AgentMentorBooking {
+  helperId: string;
+  helperName: string;
+  mode: "video" | "chat";
+}
+
+// ── Quote Arrival Event Bus ──
+type QuoteListener = (quote: ReceivedQuote, requestId: string) => void;
+const quoteListeners: Set<QuoteListener> = new Set();
+
+export function onQuoteReceived(listener: QuoteListener) {
+  quoteListeners.add(listener);
+  return () => {
+    quoteListeners.delete(listener);
+  };
+}
+
+// ── Agent-Mediated Multi-Mentor Request Dispatch ──
+export function createAgentBookingRequest({
+  seekerName = "Candidate",
+  title = "JoSAA / NEET College & Branch Guidance",
+  questions = [],
+  mentorBookings = [],
+  context = {},
+}: {
+  seekerName?: string;
+  title?: string;
+  questions: string[];
+  mentorBookings: AgentMentorBooking[];
+  context?: any;
+}): CounsellingRequest {
+  const reqId = `req-agent-${Date.now()}`;
+  const newReq: CounsellingRequest = {
+    id: reqId,
+    seekerId: "seeker-demo-user",
+    seekerName,
+    seekerType: "class_12_jee",
+    title,
+    category: "college_guidance",
+    rawText: `Agent dispatched request with ${questions.length} queries to ${mentorBookings.map((m) => `${m.helperName} (${m.mode})`).join(", ")}`,
+    normalizedSummary: `Doubts regarding: ${questions.slice(0, 3).join("; ")}. Booked via AI Agent.`,
+    context: {
+      consideredColleges: context.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
+      preferredBranches: context.preferredBranches || ["Mechanical Engineering"],
+      primaryConcerns: questions,
+      rank: context.rank || 32450,
+      exam: context.exam || "JEE Main 2026",
+    },
+    questions: questions.length > 0 ? questions : [
+      "Core company placements vs IT opportunities on campus",
+      "Hostel facilities, mess food and campus culture reality",
+      "Branch change rules and CGPA cutoffs"
+    ],
+    requestedServiceId: "college-branch-deep-dive",
+    preferredFormat: mentorBookings.some((m) => m.mode === "video") ? "call" : "chat",
+    sentToHelperIds: mentorBookings.map((m) => m.helperId),
+    receivedQuotes: [],
+    status: "open",
+    createdAt: new Date().toISOString(),
+  };
+
+  saveRequest(newReq);
+
+  // Progressive simulated helper quote arrival
+  mentorBookings.forEach((booking, index) => {
+    const helper = MENTORS.find((m) => m.id === booking.helperId);
+    if (!helper) return;
+
+    // First quote returns almost immediately, next ones progressively
+    const delayMs = index === 0 ? 500 : (index * 1600 + 400);
+
+    setTimeout(() => {
+      const isVideo = booking.mode === "video";
+      const basePrice = isVideo 
+        ? Math.round(helper.priceRange.min * 1.15) 
+        : Math.round(helper.priceRange.min * 0.7);
+      const roundedPrice = Math.max(150, Math.round(basePrice / 10) * 10);
+      const durationMin = isVideo ? 30 : 20;
+
+      const newQuote: ReceivedQuote = {
+        id: `quote-${helper.id}-${Date.now()}`,
+        requestId: newReq.id,
+        helperId: helper.id,
+        helperName: helper.name,
+        helperRole: `${helper.currentRole} (${helper.collegeName})`,
+        helperCollege: helper.collegeName,
+        serviceId: isVideo ? "1-on-1-video-strategy" : "focused-chat-qa",
+        serviceTitle: isVideo ? "1-on-1 Video Strategy Session" : "Focused Q&A Chat Session",
+        communicationMode: booking.mode,
+        priceInr: roundedPrice,
+        estimatedDurationMin: durationMin,
+        scopeSummary: isVideo
+          ? `30-min live video session resolving your specific queries: ${newReq.questions.slice(0, 2).join("; ")}.`
+          : `20-min focused direct text chat covering your queries: ${newReq.questions.slice(0, 2).join("; ")}.`,
+        helperNote: `Hi ${seekerName}! I reviewed your doubts regarding ${helper.collegeName}. Ready to share verified campus data and realistic trade-offs.`,
+        status: "sent",
+        createdAt: new Date().toISOString(),
+      };
+
+      const freshReq = getRequestById(newReq.id);
+      if (freshReq) {
+        freshReq.receivedQuotes.push(newQuote);
+        freshReq.status = "quoted";
+        saveRequest(freshReq);
+      }
+
+      // Broadcast to UI listeners
+      quoteListeners.forEach((fn) => fn(newQuote, newReq.id));
+    }, delayMs);
+  });
+
+  return newReq;
+}
+
 // ── Multi-Mentor Broadcast ──
 export function broadcastRequestToMentors(requestId: string, targetMentorIds: string[]): CounsellingRequest | undefined {
   const req = getRequestById(requestId);

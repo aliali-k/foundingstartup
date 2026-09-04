@@ -19,16 +19,20 @@ interface IntakeMessage {
 
 export function SeekerIntakeChat({
   initialContext,
+  availableMentors = [],
   onProceedToMatches,
   onOpenRefineList,
+  onAgentBookingTriggered,
 }: {
   initialContext?: {
     college?: string;
     rank?: string;
     branch?: string;
   };
+  availableMentors?: Array<{ id: string; name: string; collegeName: string; branch: string }>;
   onProceedToMatches: (profile: SeekerStructuredProfile) => void;
   onOpenRefineList: (profile: SeekerStructuredProfile) => void;
+  onAgentBookingTriggered?: (selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat" }>, queries: string[]) => void;
 }) {
   const [profile, setProfile] = useState<SeekerStructuredProfile>({
     stage: "Class 12 / JEE Aspirant",
@@ -47,14 +51,14 @@ export function SeekerIntakeChat({
       id: "m-0",
       sender: "ai",
       text: initialContext?.college
-        ? `Let's figure out what kind of guidance you need for ${initialContext.college}. What are your top priorities: core automotive opportunities, faculty quality, branch change, or software placement backup?`
-        : "Let's figure out what kind of college guidance you actually need. What colleges and branches are you currently considering with your rank?",
+        ? `Hello! I am your AI Admissions & Mentorship Agent. I coordinate directly with seniors so you don't have to message them one by one. Ask me any doubt, or tell me: "book the video session with Raj and chat session with Kabir" to dispatch your booking request!`
+        : `Hello! I am your AI Admissions & Mentorship Agent. I understand your queries, match you with verified seniors, and dispatch booking requests for you. Tell me your college doubts, or simply tell me: "book the video session with Raj and chat session with Kabir".`,
     },
   ]);
 
   const [inputVal, setInputVal] = useState("");
   const [busy, setBusy] = useState(false);
-  const [aiStatus, setAiStatus] = useState<string | null>(null);
+  const [aiStatus, setAiStatus] = useState<string | null>("AI Agent Ready (Gemini Active)");
 
   const sendMessage = async (customText?: string) => {
     const text = (customText || inputVal).trim();
@@ -64,12 +68,13 @@ export function SeekerIntakeChat({
     const userMsg: IntakeMessage = { id: `u-${Date.now()}`, sender: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setBusy(true);
-    setAiStatus("Analyzing intent & extracting structured profile with Gemini…");
+    setAiStatus("Agent reasoning & checking mentor booking commands…");
 
     try {
-      const res = await callGeminiTask("college_intake", {
+      const res = await callGeminiTask("agent_orchestrate", {
         userMessage: text,
         currentContext: profile,
+        availableMentors: availableMentors.length > 0 ? availableMentors : undefined,
       });
 
       if (res.data?.reply) {
@@ -86,21 +91,31 @@ export function SeekerIntakeChat({
           consideredColleges: Array.from(new Set([...(prev.consideredColleges || []), ...(res.data.extractedProfile.consideredColleges || [])])),
           preferredBranches: Array.from(new Set([...(prev.preferredBranches || []), ...(res.data.extractedProfile.preferredBranches || [])])),
           primaryPriorities: Array.from(new Set([...(prev.primaryPriorities || []), ...(res.data.extractedProfile.primaryPriorities || [])])),
+          specificDoubts: Array.from(new Set([...(prev.specificDoubts || []), ...(res.data.extractedProfile.specificDoubts || [])])),
         }));
       }
 
-      setAiStatus(res.isFallback ? "AI Counselor (Local Deterministic Mode)" : "AI Counselor (Grounded Gemini Active)");
+      // Check if user issued a booking command (e.g., "book video session with raj and chat session with kabir")
+      if (res.data?.isBookingIntent && res.data?.selectedMentors?.length > 0) {
+        const doubtsToPass = res.data.extractedProfile?.specificDoubts?.length > 0
+          ? res.data.extractedProfile.specificDoubts
+          : profile.specificDoubts;
+
+        onAgentBookingTriggered?.(res.data.selectedMentors, doubtsToPass);
+      }
+
+      setAiStatus(res.isFallback ? "AI Agent (Local Fallback Active)" : "AI Agent (Live Gemini Active)");
     } catch (err) {
-      console.error("Intake failed:", err);
+      console.error("Agent orchestrate failed:", err);
     } finally {
       setBusy(false);
     }
   };
 
   const quickPrompts = [
-    "I care more about Mechanical opportunities and internships than overall college ranking.",
-    "Deciding between NIT Kurukshetra and PEC Chandigarh. How difficult is branch change?",
-    "Can mechanical students get placed in software companies if core packages are lower?",
+    "Book the video session with Raj and chat session with Kabir",
+    "Book a video session with Riya Sharma for mechanical core placements",
+    "Deciding between NIT Kurukshetra Mechanical and PEC. How is campus placement?",
   ];
 
   return (

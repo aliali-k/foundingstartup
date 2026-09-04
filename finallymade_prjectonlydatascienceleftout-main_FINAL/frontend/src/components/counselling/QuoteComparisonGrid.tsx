@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { type CounsellingRequest, type ReceivedQuote, acceptQuote } from "@/lib/counselling-store";
+import { type CounsellingRequest, type ReceivedQuote, acceptQuote, onQuoteReceived } from "@/lib/counselling-store";
+import { MENTORS } from "@/data/mentors";
 import { callGeminiTask } from "@/lib/gemini-client";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -9,15 +10,38 @@ export function QuoteComparisonGrid({
   request: CounsellingRequest;
 }) {
   const navigate = useNavigate();
+  const [quotes, setQuotes] = useState<ReceivedQuote[]>(request.receivedQuotes || []);
   const [aiAnalysis, setAiAnalysis] = useState<any | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState<string | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [activeQuoteForPay, setActiveQuoteForPay] = useState<ReceivedQuote | null>(null);
+  const [alertBanner, setAlertBanner] = useState<string | null>(null);
 
-  // Trigger Gemini comparison on mount
+  // Sync quotes if request object changes
   useEffect(() => {
-    if (!request || request.receivedQuotes.length === 0) return;
+    setQuotes(request.receivedQuotes || []);
+  }, [request]);
+
+  // Subscribe to live incoming quotes dispatched by the agent
+  useEffect(() => {
+    const unsub = onQuoteReceived((newQuote, reqId) => {
+      if (reqId === request.id) {
+        setQuotes((prev) => {
+          if (prev.some((q) => q.id === newQuote.id)) return prev;
+          return [...prev, newQuote];
+        });
+        setAlertBanner(`✨ Received new quote from ${newQuote.helperName} (${newQuote.communicationMode === "video" ? "📹 Video Call" : "💬 Text Chat"}) for ₹${newQuote.priceInr}!`);
+        setTimeout(() => setAlertBanner(null), 5000);
+      }
+    });
+
+    return unsub;
+  }, [request.id]);
+
+  // Trigger Gemini comparison when quotes change
+  useEffect(() => {
+    if (quotes.length === 0) return;
 
     let isMounted = true;
     setLoadingAi(true);
@@ -25,12 +49,13 @@ export function QuoteComparisonGrid({
     callGeminiTask("compare_quotes", {
       requestSummary: request.normalizedSummary,
       questions: request.questions,
-      quotes: request.receivedQuotes.map((q) => ({
+      quotes: quotes.map((q) => ({
         helperName: q.helperName,
         helperRole: q.helperRole,
         priceInr: q.priceInr,
         durationMin: q.estimatedDurationMin,
         scopeSummary: q.scopeSummary,
+        communicationMode: q.communicationMode || "call",
       })),
     })
       .then((res) => {
@@ -46,7 +71,7 @@ export function QuoteComparisonGrid({
     return () => {
       isMounted = false;
     };
-  }, [request]);
+  }, [quotes, request.normalizedSummary, request.questions]);
 
   const handleOpenPay = (quote: ReceivedQuote) => {
     setActiveQuoteForPay(quote);
@@ -65,7 +90,10 @@ export function QuoteComparisonGrid({
     }
   };
 
-  const quotes = request.receivedQuotes || [];
+  // Compute helpers who were sent request but haven't replied yet
+  const pendingHelperIds = (request.sentToHelperIds || []).filter(
+    (hId) => !quotes.some((q) => q.helperId === hId)
+  );
 
   return (
     <div className="space-y-6 font-mono">
@@ -130,6 +158,19 @@ export function QuoteComparisonGrid({
         )}
       </div>
 
+      {/* Live Quote Notification Banner */}
+      {alertBanner && (
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3.5 flex items-center justify-between gap-3 text-xs text-emerald-600 dark:text-emerald-400 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="font-bold">{alertBanner}</span>
+          </div>
+          <span className="mono text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20">
+            Live Stream
+          </span>
+        </div>
+      )}
+
       {/* Quote Cards Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -157,11 +198,14 @@ export function QuoteComparisonGrid({
                   <div>
                     <h3 className="text-sm font-bold text-foreground">{q.helperName}</h3>
                     <p className="text-[10px] text-muted-foreground font-sans">{q.helperRole}</p>
+                    <span className="inline-block mt-1 mono text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                      {q.communicationMode === "video" ? "📹 1-on-1 Video Session" : "💬 Direct Text Chat"}
+                    </span>
                   </div>
                   <div className="text-right">
                     <span className="text-base font-black text-foreground">₹{q.priceInr}</span>
                     <span className="text-[9px] text-muted-foreground block font-mono">
-                      {q.estimatedDurationMin} min call
+                      {q.estimatedDurationMin} min {q.communicationMode === "video" ? "call" : "chat"}
                     </span>
                   </div>
                 </div>
@@ -190,7 +234,7 @@ export function QuoteComparisonGrid({
                 ) : (
                   <button
                     onClick={() => handleOpenPay(q)}
-                    className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-bold text-white transition shadow-sm"
+                    className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 py-2.5 text-xs font-bold text-white transition shadow-sm cursor-pointer"
                   >
                     Accept Quote (₹{q.priceInr}) →
                   </button>
@@ -198,6 +242,43 @@ export function QuoteComparisonGrid({
               </div>
             </div>
           ))}
+
+          {/* Pending Helper Cards (Waiting for quotes to arrive) */}
+          {pendingHelperIds.map((hId) => {
+            const helper = MENTORS.find((m) => m.id === hId);
+            if (!helper) return null;
+            return (
+              <div
+                key={hId}
+                className="rounded-2xl border border-dashed border-border bg-muted/20 p-5 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-muted-foreground">{helper.name}</h3>
+                      <p className="text-[10px] text-muted-foreground/80 font-sans">{helper.currentRole}</p>
+                    </div>
+                    <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                  </div>
+
+                  <div className="py-8 text-center space-y-2">
+                    <span className="mono text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-bold block">
+                      Reviewing your queries…
+                    </span>
+                    <p className="text-[11px] text-muted-foreground font-sans max-w-xs mx-auto">
+                      {helper.name.split(" ")[0]} is reviewing your doubts and calculating custom scope. Quote arriving momentarily.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-border/40 text-center">
+                  <span className="mono text-[10px] text-muted-foreground">
+                    Estimated arrival ~2 seconds
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

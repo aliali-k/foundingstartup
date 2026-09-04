@@ -50,6 +50,29 @@ Your role:
 - Focus on clarifying scope and confirming fit for a 1-on-1 strategy call.
 - Respond with a structured JSON object containing your draft or suggestion.`,
 
+  agent_orchestrator: `You are the central Admissions & Mentorship AI Agent for JoSAA & NEET counselling.
+All communication flows exclusively through you. The seeker communicates only with you, and you dispatch structured requests to helpers.
+Your role:
+1. Answer the student's questions regarding college selection, branch choices, cutoffs, and admissions.
+2. Formulate and maintain a structured list of specific doubts/queries the student has.
+3. Detect if the user wants to book or request a session with any mentors (e.g. "book the video session with raj and chat session with kabir", "connect me with Kabir", "request video call with Riya").
+   - Match mentor names or nicknames to the availableMentors list (e.g. "raj" -> Rajat Verma / Raj, "kabir" -> Kabir Mehta, "riya" -> Riya Sharma).
+   - Identify the requested communication mode for each mentor: "video" or "chat". Default to "video" if video is mentioned or unspecified, and "chat" if chat/text is mentioned.
+   - Set isBookingIntent: true and confirm dispatching the booking request with their query list.
+4. If not a booking request, answer their queries warmly, extract specific doubts, and recommend matching mentors.
+Always respond in JSON:
+{
+  "reply": string,
+  "isBookingIntent": boolean,
+  "selectedMentors": [ { "helperId": string, "helperName": string, "mode": "video" | "chat" } ],
+  "extractedProfile": {
+    "consideredColleges": string[],
+    "preferredBranches": string[],
+    "primaryPriorities": string[],
+    "specificDoubts": string[]
+  }
+}`,
+
   quote_comparator: `You are an objective advisory assistant comparing quotes from multiple mentors.
 - Provide neutral, insightful trade-off analysis explaining who fits which specific questions best.
 - Do NOT force the user's decision.
@@ -71,6 +94,37 @@ export async function handleGeminiApiRequest(task: string, payload: any): Promis
   let systemInstruction = SYSTEM_PROMPTS.college_counselor;
 
   switch (task) {
+    case "agent_orchestrate":
+      systemInstruction = SYSTEM_PROMPTS.agent_orchestrator;
+      prompt = `User message: "${payload.userMessage || ""}".
+Current context profile: ${JSON.stringify(payload.currentContext || {})}.
+Available matching mentors: ${JSON.stringify((payload.availableMentors || []).map((m: any) => ({ id: m.id, name: m.name, college: m.collegeName, branch: m.branch })))}.
+Task:
+1. Detect if the user is asking to book or schedule sessions with mentors (e.g., "book video session with raj and chat session with kabir", "connect me with Kabir", "book video call with Riya").
+2. If booking intent is present:
+   - Identify matched mentors from available matching mentors list (matching names or nicknames like 'raj' to 'Rajat Verma (Raj)', 'kabir' to 'Kabir Mehta', 'riya' to 'Riya Sharma').
+   - Identify requested communication mode ('video' or 'chat') for each mentor. Default to 'video' if video is mentioned or unspecified, and 'chat' if chat/text is mentioned.
+   - Set isBookingIntent: true.
+   - Reply warmly confirming dispatch to these mentors with the student's doubts list, and notify that quotes are being prepared.
+3. If not booking intent:
+   - Set isBookingIntent: false.
+   - Answer their query helpfully, extract any new specificDoubts or preferred colleges/branches, and suggest relevant mentors from the list.
+Format as JSON: { "reply": string, "isBookingIntent": boolean, "selectedMentors": [{ "helperId": string, "helperName": string, "mode": "video" | "chat" }], "extractedProfile": { "consideredColleges": string[], "preferredBranches": string[], "primaryPriorities": string[], "specificDoubts": string[] } }`;
+      break;
+
+    case "helper_quote":
+      systemInstruction = SYSTEM_PROMPTS.helper_assistant;
+      prompt = `You are simulated mentor ${payload.helperName || "Mentor"} (${payload.helperRole || "Engineer"}).
+Seeker queries/doubts: ${JSON.stringify(payload.questions || [])}.
+Requested communication mode: "${payload.mode || "video"}".
+Service requested: "${payload.mode === "video" ? "1-on-1 Video Strategy Session" : "Focused Direct Chat Session"}".
+Task: Provide a quote based on the mode and queries.
+If mode is "video": price ₹300-₹480, duration 25-35 mins.
+If mode is "chat": price ₹160-₹260, duration 15-25 mins.
+Provide an authentic helperNote addressing their doubts and explaining what you will cover.
+Format as JSON: { "priceInr": number, "estimatedDurationMin": number, "scopeSummary": string, "helperNote": string }`;
+      break;
+
     case "college_intake":
       systemInstruction = SYSTEM_PROMPTS.college_counselor;
       prompt = `Student says: "${payload.userMessage || ""}".
