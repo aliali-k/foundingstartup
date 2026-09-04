@@ -174,7 +174,7 @@ export function QuoteComparisonGrid({
       {/* Quote Cards Grid */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+          <span suppressHydrationWarning className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
             Received Quotes ({quotes.length})
           </span>
           <span className="text-[10px] text-muted-foreground">
