@@ -1,6 +1,7 @@
 import { COLLEGES } from "../data/colleges";
 import { MENTORS } from "../data/mentors";
 import { CAREER_ROLES } from "../data/careerRoles";
+import { PLATFORM_SERVICES } from "../data/services";
 
 export interface GeminiTaskResponse {
   success: boolean;
@@ -8,6 +9,20 @@ export interface GeminiTaskResponse {
   data: any;
   message?: string;
 }
+
+// Mentor aliases and fuzzy name mappings
+const MENTOR_ALIASES: Record<string, string[]> = {
+  "aarav-patel-pec": ["aarav", "arnav", "arav", "patel", "aarav patel", "arnav patel"],
+  "rajat-verma-nitkkr": ["raj", "rajat", "verma", "rajat verma", "raj sharma"],
+  "kabir-mehta-iitk": ["kabir", "mehta", "kabir mehta"],
+  "riya-sharma-nitkkr": ["riya", "sharma", "riya sharma"],
+  "sneha-rao-msft": ["sneha", "rao", "sneha rao"],
+  "vikramaditya-sen-staff": ["vikram", "vikramaditya", "sen"],
+  "arjun-nambiar-razorpay": ["arjun", "nambiar"],
+  "tanvi-thakur-nith": ["tanvi", "thakur"],
+  "dr-ananya-das-aiims": ["ananya", "das", "dr ananya"],
+  "dr-rohit-malhotra-mamc": ["rohit", "malhotra", "dr rohit"],
+};
 
 /**
  * High-fidelity deterministic fallback logic.
@@ -18,29 +33,80 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
   switch (task) {
     case "agent_orchestrate": {
       const text = (payload.userMessage || "").toLowerCase();
-      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || text.includes("connect") || text.includes("quote") || text.includes("offer");
-      const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number }> = [];
 
-      // Extract price mentions like "300 rs", "₹300", "for 300", "quote of 300"
-      const priceMatch = text.match(/(?:quote\s+of|offer\s+of|for|price|rs\.?|₹)\s*(\d{2,4})\s*(?:rs|inr|₹)?/i) ||
-        text.match(/(\d{2,4})\s*(?:rs|inr|rupees)/i);
+      // 1. Check if user is responding to a pending price request
+      const priceOnlyMatch = text.match(/(?:offer|price|for)?\s*(?:rs\.?|₹)?\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i);
+      const pending = payload.pendingBooking;
+
+      if (pending && priceOnlyMatch && parseInt(priceOnlyMatch[1], 10) >= 50) {
+        const offer = parseInt(priceOnlyMatch[1], 10);
+        return {
+          success: true,
+          isFallback: true,
+          data: {
+            isBookingIntent: true,
+            needsPriceSpecification: false,
+            selectedMentors: [{
+              helperId: pending.helperId,
+              helperName: pending.helperName,
+              mode: pending.mode || "video",
+              offeredPriceInr: offer,
+              serviceTitle: pending.serviceTitle,
+            }],
+            reply: `Target offer of ₹${offer} confirmed for ${pending.helperName}! I have dispatched your booking request with your query list. Their customized quote is streaming in now!`,
+            extractedProfile: {
+              consideredColleges: payload.currentContext?.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
+              preferredBranches: payload.currentContext?.preferredBranches || ["Mechanical Engineering"],
+              primaryPriorities: payload.currentContext?.primaryPriorities || ["Core Placements", "Hostel Culture"],
+              specificDoubts: payload.currentContext?.specificDoubts || ["Placement reality", "Hostel culture"],
+            },
+          },
+        };
+      }
+
+      // 2. Booking intent detection
+      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || 
+        text.includes("connect") || text.includes("quote") || text.includes("offer") || 
+        text.includes("request") || text.includes("meet") || text.includes("audit");
+
+      // Extract price mentions like "350 rs", "for 350", "₹300", "offer of 280", etc.
+      const priceMatch = text.match(/(?:quote\s+of|offer\s+of|for|price\s+of|at|rs\.?|₹)\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i) ||
+        text.match(/\b(\d{2,4})\s*(?:rs|inr|rupees)\b/i) ||
+        text.match(/(?:rs\.?|₹)\s*(\d{2,4})\b/i);
       const parsedOffer = priceMatch ? parseInt(priceMatch[1], 10) : undefined;
 
+      // Extract any matched service from PLATFORM_SERVICES
+      const matchedService = PLATFORM_SERVICES.find((s) => {
+        const titleLower = s.title.toLowerCase();
+        return text.includes(titleLower) || 
+          (titleLower.includes("system design") && text.includes("system design")) ||
+          (titleLower.includes("sde-1") && text.includes("sde-1")) ||
+          (titleLower.includes("choice order") && text.includes("choice order")) ||
+          (titleLower.includes("branch deep-dive") && (text.includes("deep dive") || text.includes("deep-dive")));
+      });
+
+      const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number; serviceTitle?: string }> = [];
+      let pendingMentor: any = null;
+
       if (isBooking) {
-        const available = payload.availableMentors || MENTORS;
-        available.forEach((m: any) => {
+        // Search across all mentors in MENTORS
+        MENTORS.forEach((m) => {
           const lowerName = m.name.toLowerCase();
           const firstName = lowerName.split(" ")[0];
-          // Check for names or aliases (e.g., 'raj', 'kabir', 'riya', 'aarav')
-          const matchesMentor = text.includes(firstName) || 
-            (lowerName.includes("raj") && text.includes("raj")) || 
-            (lowerName.includes("kabir") && text.includes("kabir"));
-          
+          const lastName = lowerName.split(" ")[1] || "";
+          const aliases = MENTOR_ALIASES[m.id] || [firstName];
+
+          // Check if text matches mentor name, last name, or any alias (e.g. arnav -> aarav patel)
+          const matchesMentor = aliases.some((a) => text.includes(a)) ||
+            (lastName.length > 2 && text.includes(lastName)) ||
+            text.includes(lowerName) ||
+            (matchedService && m.supportedServiceIds.includes(matchedService.id) && text.includes(firstName));
+
           if (matchesMentor) {
-            // Check whether 'video' or 'chat' is closer before this mentor
-            let mode: "video" | "chat" = "video";
+            // Determine mode
+            let mode: "video" | "chat" = matchedService?.format === "chat" ? "chat" : "video";
             const mentorIdx = text.indexOf(firstName);
-            const prefix = mentorIdx >= 0 ? text.slice(Math.max(0, mentorIdx - 35), mentorIdx) : text;
+            const prefix = mentorIdx >= 0 ? text.slice(Math.max(0, mentorIdx - 40), mentorIdx) : text;
             const lastVideoIdx = prefix.lastIndexOf("video");
             const lastChatIdx = prefix.lastIndexOf("chat");
 
@@ -48,22 +114,58 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
               mode = "chat";
             } else if (lastVideoIdx >= 0 && lastVideoIdx >= lastChatIdx) {
               mode = "video";
-            } else if (text.includes("video") && !text.includes("chat")) {
-              mode = "video";
             } else if (text.includes("chat") && !text.includes("video")) {
               mode = "chat";
+            } else if (text.includes("video") && !text.includes("chat")) {
+              mode = "video";
             }
 
+            const serviceTitle = matchedService?.title || (mode === "video" ? "1-on-1 Video Session" : "Direct Text Chat");
+
             if (!selectedMentors.some((sm) => sm.helperId === m.id)) {
-              selectedMentors.push({
-                helperId: m.id,
-                helperName: m.name,
-                mode,
-                offeredPriceInr: parsedOffer,
-              });
+              if (parsedOffer !== undefined) {
+                selectedMentors.push({
+                  helperId: m.id,
+                  helperName: m.name,
+                  mode,
+                  offeredPriceInr: parsedOffer,
+                  serviceTitle,
+                });
+              } else {
+                pendingMentor = {
+                  helperId: m.id,
+                  helperName: m.name,
+                  mode,
+                  basePriceInr: matchedService?.basePriceInr || m.priceRange.min,
+                  serviceTitle,
+                };
+              }
             }
           }
         });
+
+        // Fallback: If service is mentioned but no specific mentor name was found, pick top mentor supporting that service
+        if (matchedService && selectedMentors.length === 0 && !pendingMentor) {
+          const mentorForService = MENTORS.find((m) => m.supportedServiceIds.includes(matchedService.id)) || MENTORS[0];
+          const mode = matchedService.format === "chat" ? "chat" : "video";
+          if (parsedOffer !== undefined) {
+            selectedMentors.push({
+              helperId: mentorForService.id,
+              helperName: mentorForService.name,
+              mode,
+              offeredPriceInr: parsedOffer,
+              serviceTitle: matchedService.title,
+            });
+          } else {
+            pendingMentor = {
+              helperId: mentorForService.id,
+              helperName: mentorForService.name,
+              mode,
+              basePriceInr: matchedService.basePriceInr,
+              serviceTitle: matchedService.title,
+            };
+          }
+        }
       }
 
       const doubtList = payload.currentContext?.specificDoubts || [
@@ -72,13 +174,35 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
         "Curriculum flexibility & branch change threshold"
       ];
 
+      // If price was missing: Ask user for their price!
+      if (pendingMentor && selectedMentors.length === 0) {
+        return {
+          success: true,
+          isFallback: true,
+          data: {
+            isBookingIntent: true,
+            needsPriceSpecification: true,
+            pendingMentor,
+            reply: `You've selected ${pendingMentor.helperName} for '${pendingMentor.serviceTitle}' (standard base rate is ~₹${pendingMentor.basePriceInr}). What is your target offer price for this session?`,
+            selectedMentors: [],
+            extractedProfile: {
+              consideredColleges: payload.currentContext?.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
+              preferredBranches: payload.currentContext?.preferredBranches || ["Mechanical Engineering"],
+              primaryPriorities: payload.currentContext?.primaryPriorities || ["Core Placements", "Hostel Culture"],
+              specificDoubts: doubtList,
+            },
+          },
+        };
+      }
+
       return {
         success: true,
         isFallback: true,
         data: {
           isBookingIntent: isBooking && selectedMentors.length > 0,
+          needsPriceSpecification: false,
           reply: isBooking && selectedMentors.length > 0
-            ? `I have dispatched your booking request with your query list to ${selectedMentors.map((m) => `${m.helperName} (${m.mode === "video" ? "Video Session" : "Chat Session"})`).join(" and ")}. Their customized quotes are streaming in now!`
+            ? `I have dispatched your booking request with your query list to ${selectedMentors.map((m) => `${m.helperName} (${m.serviceTitle || (m.mode === "video" ? "Video Session" : "Chat Session")})`).join(" and ")}${parsedOffer ? ` with your proposed offer of ₹${parsedOffer}` : ""}. Their customized quotes are streaming in now!`
             : "I've analyzed your queries regarding college admissions and core vs IT placement trade-offs. Check out our recommended seniors below, or tell me 'book video session with Raj and chat session with Kabir' to request quotes directly through me.",
           selectedMentors,
           extractedProfile: {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { callGeminiTask } from "@/lib/gemini-client";
 import { onQuoteReceived, type ReceivedQuote } from "@/lib/counselling-store";
 
@@ -12,17 +12,35 @@ export interface SeekerStructuredProfile {
   specificDoubts: string[];
 }
 
+export interface ExternalBookingIntent {
+  mentorName: string;
+  helperId?: string;
+  mode: "video" | "chat";
+  serviceTitle?: string;
+  offeredPriceInr?: number;
+  timestamp: number;
+}
+
 interface IntakeMessage {
   id: string;
   sender: "ai" | "user";
   text: string;
   isQuoteNotification?: boolean;
   quote?: ReceivedQuote;
+  isPricePrompt?: boolean;
+  pendingMentor?: {
+    helperId: string;
+    helperName: string;
+    mode: "video" | "chat";
+    basePriceInr: number;
+    serviceTitle?: string;
+  };
 }
 
 export function SeekerIntakeChat({
   initialContext,
   availableMentors = [],
+  externalBookingIntent,
   onProceedToMatches,
   onOpenRefineList,
   onAgentBookingTriggered,
@@ -34,11 +52,13 @@ export function SeekerIntakeChat({
     branch?: string;
   };
   availableMentors?: Array<{ id: string; name: string; collegeName: string; branch: string }>;
+  externalBookingIntent?: ExternalBookingIntent | null;
   onProceedToMatches: (profile: SeekerStructuredProfile) => void;
   onOpenRefineList: (profile: SeekerStructuredProfile) => void;
   onAgentBookingTriggered?: (selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number }>, queries: string[]) => void;
   onScrollToCompare?: () => void;
 }) {
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const [profile, setProfile] = useState<SeekerStructuredProfile>({
     stage: "Class 12 / JEE Aspirant",
     exam: "JEE Main 2026",
@@ -56,14 +76,22 @@ export function SeekerIntakeChat({
       id: "m-0",
       sender: "ai",
       text: initialContext?.college
-        ? `Hello! I am your AI Admissions & Mentorship Agent. I coordinate directly with seniors so you don't have to message them one by one. Ask me any doubt, or tell me: "request a quote of 300 rs with raj for a video meeting" or "book video with Raj and chat with Kabir" to dispatch your booking request with your custom target budget!`
-        : `Hello! I am your AI Admissions & Mentorship Agent. I understand your queries, match you with verified seniors, and dispatch booking requests for you. Tell me your college doubts, or specify your custom budget (e.g. "request a quote of 300 rs with raj for a video meeting").`,
+        ? `Hello! I am your AI Admissions & Mentorship Agent. I coordinate directly with seniors and professionals so you don't have to message them one by one. Ask me any query, or tell me: "book a request with arnav patel for SDE-1 to SDE-2 Promotion & System Design Audit for 350 rs" or "request a quote of 300 rs with raj" to dispatch booking requests with your custom price!`
+        : `Hello! I am your AI Admissions & Mentorship Agent. I understand your queries, match you with verified seniors, and negotiate quotes on your behalf. Ask any query, or specify your custom offer price (e.g. "request a quote of 300 rs with raj for a video meeting").`,
     },
   ]);
 
   const [inputVal, setInputVal] = useState("");
   const [busy, setBusy] = useState(false);
   const [aiStatus, setAiStatus] = useState<string | null>("AI Agent Ready (Gemini Active)");
+  const [pendingBooking, setPendingBooking] = useState<{
+    helperId: string;
+    helperName: string;
+    mode: "video" | "chat";
+    basePriceInr: number;
+    serviceTitle?: string;
+  } | null>(null);
+  const [customOfferInput, setCustomOfferInput] = useState("");
 
   // Listen for live quotes returned by helpers and post interactive cards into the chat stream!
   useEffect(() => {
@@ -87,11 +115,63 @@ export function SeekerIntakeChat({
     return unsub;
   }, []);
 
+  // Handle external booking intent from Mentor Card or Mentor Profile Modal buttons
+  useEffect(() => {
+    if (!externalBookingIntent) return;
+    chatContainerRef.current?.scrollIntoView({ behavior: "smooth" });
+    const svc = externalBookingIntent.serviceTitle || (externalBookingIntent.mode === "video" ? "Video Meeting" : "Chat Session");
+    if (externalBookingIntent.offeredPriceInr) {
+      sendMessage(`book a request with ${externalBookingIntent.mentorName} for ${svc} for ${externalBookingIntent.offeredPriceInr} rs`);
+    } else {
+      sendMessage(`book a request with ${externalBookingIntent.mentorName} for ${svc}`);
+    }
+  }, [externalBookingIntent?.timestamp]);
+
+  const handleConfirmOffer = (
+    mentorInfo: { helperId: string; helperName: string; mode: "video" | "chat"; basePriceInr: number; serviceTitle?: string },
+    offerPrice: number
+  ) => {
+    setPendingBooking(null);
+    setCustomOfferInput("");
+
+    const userMsg: IntakeMessage = {
+      id: `u-${Date.now()}`,
+      sender: "user",
+      text: `Offer ₹${offerPrice} for ${mentorInfo.helperName} (${mentorInfo.serviceTitle || (mentorInfo.mode === "video" ? "Video Call" : "Chat")})`,
+    };
+
+    const aiMsg: IntakeMessage = {
+      id: `ai-${Date.now()}`,
+      sender: "ai",
+      text: `Target offer of ₹${offerPrice} confirmed for ${mentorInfo.helperName}! I have dispatched your booking request with your queries list. Their customized quote is streaming in now!`,
+    };
+
+    setMessages((prev) => [...prev, userMsg, aiMsg]);
+
+    const doubtsToPass = profile.specificDoubts;
+    onAgentBookingTriggered?.([{
+      helperId: mentorInfo.helperId,
+      helperName: mentorInfo.helperName,
+      mode: mentorInfo.mode,
+      offeredPriceInr: offerPrice,
+    }], doubtsToPass);
+  };
+
   const sendMessage = async (customText?: string) => {
     const text = (customText || inputVal).trim();
     if (!text || busy) return;
 
     setInputVal("");
+
+    // If user is answering a pending price question with a number like "350" or "350 rs"
+    if (pendingBooking) {
+      const priceOnlyMatch = text.match(/(?:offer|price|for)?\s*(?:rs\.?|₹)?\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i);
+      if (priceOnlyMatch && parseInt(priceOnlyMatch[1], 10) >= 50) {
+        handleConfirmOffer(pendingBooking, parseInt(priceOnlyMatch[1], 10));
+        return;
+      }
+    }
+
     const userMsg: IntakeMessage = { id: `u-${Date.now()}`, sender: "user", text };
     setMessages((prev) => [...prev, userMsg]);
     setBusy(true);
@@ -101,13 +181,20 @@ export function SeekerIntakeChat({
       const res = await callGeminiTask("agent_orchestrate", {
         userMessage: text,
         currentContext: profile,
+        pendingBooking,
         availableMentors: availableMentors.length > 0 ? availableMentors : undefined,
       });
 
       if (res.data?.reply) {
         setMessages((prev) => [
           ...prev,
-          { id: `ai-${Date.now()}`, sender: "ai", text: res.data.reply },
+          {
+            id: `ai-${Date.now()}`,
+            sender: "ai",
+            text: res.data.reply,
+            isPricePrompt: res.data?.needsPriceSpecification,
+            pendingMentor: res.data?.pendingMentor,
+          },
         ]);
       }
 
@@ -122,8 +209,11 @@ export function SeekerIntakeChat({
         }));
       }
 
-      // Check if user issued a booking/quote command (e.g., "request a quote of 300 rs with raj for a video meeting")
-      if (res.data?.isBookingIntent && res.data?.selectedMentors?.length > 0) {
+      // Check if price needs to be specified before dispatching!
+      if (res.data?.needsPriceSpecification && res.data?.pendingMentor) {
+        setPendingBooking(res.data.pendingMentor);
+      } else if (res.data?.isBookingIntent && res.data?.selectedMentors?.length > 0) {
+        setPendingBooking(null);
         const doubtsToPass = res.data.extractedProfile?.specificDoubts?.length > 0
           ? res.data.extractedProfile.specificDoubts
           : profile.specificDoubts;
@@ -140,13 +230,13 @@ export function SeekerIntakeChat({
   };
 
   const quickPrompts = [
+    "Book a request with Arnav Patel for SDE-1 to SDE-2 Promotion & System Design Audit for 350 rs",
     "Request a quote of ₹300 with Raj for a video meeting",
     "Book the video session with Raj and chat session with Kabir",
-    "Request a quote of ₹180 with Kabir for a chat session",
   ];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-12 items-start">
+    <div ref={chatContainerRef} className="grid gap-6 lg:grid-cols-12 items-start">
       {/* LEFT / CENTER: Conversational Intake (7 cols) */}
       <div className="lg:col-span-7 flex flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
         {/* Chat Header */}
@@ -215,7 +305,71 @@ export function SeekerIntakeChat({
                       : "bg-muted/70 text-foreground border border-border/60"
                   }`}
                 >
-                  {m.text}
+                  <p className="whitespace-pre-line">{m.text}</p>
+
+                  {/* Interactive Offer Price Selector when price is needed */}
+                  {m.isPricePrompt && m.pendingMentor && (
+                    <div className="mt-3 pt-3 border-t border-border/60 space-y-2 font-mono">
+                      <div className="flex items-center justify-between text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider">
+                        <span>◆ Set Your Target Offer Price:</span>
+                        <span className="text-muted-foreground font-normal">Base: ~₹{m.pendingMentor.basePriceInr}</span>
+                      </div>
+
+                      {/* Quick Offer Pills */}
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {[
+                          Math.max(150, m.pendingMentor.basePriceInr - 100),
+                          Math.max(200, m.pendingMentor.basePriceInr - 50),
+                          m.pendingMentor.basePriceInr,
+                          m.pendingMentor.basePriceInr + 50,
+                        ].map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => handleConfirmOffer(m.pendingMentor!, p)}
+                            className="rounded-md border border-blue-500/40 bg-background hover:bg-blue-600 hover:text-white px-2.5 py-1 text-[11px] font-bold transition cursor-pointer shadow-xs"
+                          >
+                            Offer ₹{p}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom Input */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <div className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1">
+                          <span className="text-xs font-bold text-muted-foreground">₹</span>
+                          <input
+                            type="number"
+                            placeholder={String(m.pendingMentor.basePriceInr)}
+                            value={customOfferInput}
+                            onChange={(e) => setCustomOfferInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                const val = parseInt(customOfferInput, 10);
+                                if (!isNaN(val) && val > 0) {
+                                  handleConfirmOffer(m.pendingMentor!, val);
+                                }
+                              }
+                            }}
+                            className="w-20 bg-transparent text-xs font-bold text-foreground outline-none text-right"
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = parseInt(customOfferInput, 10);
+                            if (!isNaN(val) && val > 0) {
+                              handleConfirmOffer(m.pendingMentor!, val);
+                            }
+                          }}
+                          className="rounded-md bg-blue-600 hover:bg-blue-700 text-white text-[10.5px] font-bold px-3 py-1.5 transition shadow-xs cursor-pointer"
+                        >
+                          Confirm Offer →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

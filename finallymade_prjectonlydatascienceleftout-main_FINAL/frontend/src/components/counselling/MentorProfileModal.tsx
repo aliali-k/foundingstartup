@@ -19,7 +19,7 @@ export function MentorProfileModal({
   selectedMode?: "video" | "chat" | null;
   initialOfferPrice?: number;
   onClose: () => void;
-  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number) => void;
+  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number, serviceTitle?: string) => void;
 }) {
   const [selectedTab, setSelectedTab] = useState<"all" | "call" | "chat" | "audit">("all");
   const [customOffer, setCustomOffer] = useState<string>(
@@ -176,7 +176,7 @@ export function MentorProfileModal({
                   onClick={() => {
                     onClose();
                     const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
-                    onSelectForAgent?.(mentor, "video", isNaN(offerVal!) ? undefined : offerVal);
+                    onSelectForAgent?.(mentor, "video", isNaN(offerVal!) ? undefined : offerVal, "1-on-1 Video Call");
                   }}
                   className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold py-2.5 text-center transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
@@ -187,7 +187,7 @@ export function MentorProfileModal({
                   onClick={() => {
                     onClose();
                     const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
-                    onSelectForAgent?.(mentor, "chat", isNaN(offerVal!) ? undefined : offerVal);
+                    onSelectForAgent?.(mentor, "chat", isNaN(offerVal!) ? undefined : offerVal, "Direct Text Chat");
                   }}
                   className="rounded-xl border border-border bg-background hover:border-blue-500 text-foreground font-mono text-xs font-bold py-2.5 text-center transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
@@ -297,7 +297,8 @@ export function MentorProfileModal({
                         type="button"
                         onClick={() => {
                           onClose();
-                          onSelectForAgent?.(mentor, svc.format === "chat" ? "chat" : "video");
+                          const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
+                          onSelectForAgent?.(mentor, svc.format === "chat" ? "chat" : "video", isNaN(offerVal!) ? undefined : offerVal, svc.title);
                         }}
                         className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-mono text-[10px] font-bold px-3 py-1.5 transition flex items-center gap-1 cursor-pointer"
                       >

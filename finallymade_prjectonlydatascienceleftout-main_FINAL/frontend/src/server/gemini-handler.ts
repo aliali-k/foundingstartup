@@ -99,18 +99,23 @@ export async function handleGeminiApiRequest(task: string, payload: any): Promis
       systemInstruction = SYSTEM_PROMPTS.agent_orchestrator;
       prompt = `User message: "${payload.userMessage || ""}".
 Current context profile: ${JSON.stringify(payload.currentContext || {})}.
-Available matching mentors: ${JSON.stringify((payload.availableMentors || []).map((m: any) => ({ id: m.id, name: m.name, college: m.collegeName, branch: m.branch })))}.
+Pending booking: ${JSON.stringify(payload.pendingBooking || null)}.
+Available matching mentors: ${JSON.stringify(payload.availableMentors || [])}.
 Task:
-1. Detect if the user is asking to book or schedule sessions with mentors (e.g., "book video session with raj and chat session with kabir", "connect me with Kabir", "book video call with Riya").
-2. If booking intent is present:
-   - Identify matched mentors from available matching mentors list (matching names or nicknames like 'raj' to 'Rajat Verma (Raj)', 'kabir' to 'Kabir Mehta', 'riya' to 'Riya Sharma').
-   - Identify requested communication mode ('video' or 'chat') for each mentor. Default to 'video' if video is mentioned or unspecified, and 'chat' if chat/text is mentioned.
-   - Set isBookingIntent: true.
-   - Reply warmly confirming dispatch to these mentors with the student's doubts list, and notify that quotes are being prepared.
-3. If not booking intent:
-   - Set isBookingIntent: false.
-   - Answer their query helpfully, extract any new specificDoubts or preferred colleges/branches, and suggest relevant mentors from the list.
-Format as JSON: { "reply": string, "isBookingIntent": boolean, "selectedMentors": [{ "helperId": string, "helperName": string, "mode": "video" | "chat" }], "extractedProfile": { "consideredColleges": string[], "preferredBranches": string[], "primaryPriorities": string[], "specificDoubts": string[] } }`;
+1. Detect if the user is asking to book, request quotes, or schedule sessions with mentors (e.g., "book a request with arnav patel for SDE-1 to SDE-2 Promotion & System Design Audit for 350 rs", "request a quote of 300 rs with raj", "book video session with raj").
+2. Match mentors robustly with aliases, typos, and surnames (e.g. 'arnav' or 'patel' -> 'Aarav Patel', 'raj' or 'raj sharma' -> 'Rajat Verma (Raj)', 'kabir' -> 'Kabir Mehta', 'riya' -> 'Riya Sharma', 'sneha' -> 'Sneha Rao', 'vikram' -> 'Vikramaditya Sen').
+3. Match any mentioned service from the platform (e.g. 'SDE-1 to SDE-2 Promotion & System Design Audit', 'College & Branch Reality Deep-Dive', 'JoSAA Choice Order Strategy Audit').
+4. Extract any proposed offer/budget price mentioned (e.g. "350 rs", "for 350", "₹300", "quote of 300").
+5. CRITICAL RULE: If booking intent is present BUT no price is specified (either in this message or prior pending booking):
+   - Set "isBookingIntent": true, "needsPriceSpecification": true.
+   - Set "pendingMentor": { "helperId": string, "helperName": string, "mode": "video" | "chat", "basePriceInr": number, "serviceTitle": string }.
+   - Set "reply" to ask the user warmly what their target offer price is (mentioning the base rate ~₹[X]).
+   - Do NOT finalize selectedMentors (leave as empty array []).
+6. If booking intent is present AND a price is specified:
+   - Set "isBookingIntent": true, "needsPriceSpecification": false.
+   - Set "selectedMentors": [{ "helperId": string, "helperName": string, "mode": "video" | "chat", "offeredPriceInr": number, "serviceTitle": string }].
+   - Reply warmly confirming dispatch to the mentor with the student's doubts list and their offer of ₹[X].
+Format as JSON: { "reply": string, "isBookingIntent": boolean, "needsPriceSpecification": boolean, "pendingMentor"?: { "helperId": string, "helperName": string, "mode": "video" | "chat", "basePriceInr": number, "serviceTitle": string }, "selectedMentors": [{ "helperId": string, "helperName": string, "mode": "video" | "chat", "offeredPriceInr"?: number, "serviceTitle"?: string }], "extractedProfile": { "consideredColleges": string[], "preferredBranches": string[], "primaryPriorities": string[], "specificDoubts": string[] } }`;
       break;
 
     case "helper_quote":

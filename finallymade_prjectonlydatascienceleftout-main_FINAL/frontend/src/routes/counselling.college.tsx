@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState, useRef } from "react";
 import { CounsellingHeader } from "@/components/counselling/CounsellingHeader";
-import { SeekerIntakeChat, type SeekerStructuredProfile } from "@/components/counselling/SeekerIntakeChat";
+import { SeekerIntakeChat, type SeekerStructuredProfile, type ExternalBookingIntent } from "@/components/counselling/SeekerIntakeChat";
 import { CollegeRefineModal } from "@/components/counselling/CollegeRefineModal";
 import { MentorCard } from "@/components/counselling/MentorCard";
 import { MentorFilterBar, type ActiveFilters } from "@/components/counselling/MentorFilterBar";
@@ -50,6 +50,7 @@ function CollegeGuidancePage() {
   // Agent Communication: Track selected mentors & communication modes
   const [selectedBookings, setSelectedBookings] = useState<Map<string, AgentMentorBooking>>(new Map());
   const [activeRequestId, setActiveRequestId] = useState<string | null>(search.requestId || null);
+  const [externalBookingIntent, setExternalBookingIntent] = useState<ExternalBookingIntent | null>(null);
 
   // Compute matched mentors deterministically
   const rawMatches = matchMentorsForCollege({
@@ -77,7 +78,12 @@ function CollegeGuidancePage() {
     setProfileModalOpen(true);
   };
 
-  const handleSelectMentorForAgent = (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number) => {
+  const handleSelectMentorForAgent = (
+    mentor: MentorProfile,
+    mode: "video" | "chat",
+    offeredPriceInr?: number,
+    serviceTitle?: string
+  ) => {
     setSelectedBookings((prev) => {
       const next = new Map(prev);
       next.set(mentor.id, {
@@ -87,6 +93,15 @@ function CollegeGuidancePage() {
         offeredPriceInr,
       });
       return next;
+    });
+
+    setExternalBookingIntent({
+      mentorName: mentor.name,
+      helperId: mentor.id,
+      mode,
+      serviceTitle,
+      offeredPriceInr,
+      timestamp: Date.now(),
     });
   };
 
@@ -182,6 +197,7 @@ function CollegeGuidancePage() {
               collegeName: m.mentor.collegeName,
               branch: m.mentor.branch,
             }))}
+            externalBookingIntent={externalBookingIntent}
             onProceedToMatches={(p) => setCurrentProfile(p)}
             onOpenRefineList={(p) => {
               setCurrentProfile(p);
@@ -315,8 +331,8 @@ function CollegeGuidancePage() {
         matchReasons={selectedMentorForProfile?.highlightReasons ?? []}
         selectedMode={selectedMentorForProfile ? selectedBookings.get(selectedMentorForProfile.mentor.id)?.mode : null}
         initialOfferPrice={selectedMentorForProfile ? selectedBookings.get(selectedMentorForProfile.mentor.id)?.offeredPriceInr : undefined}
-        onSelectForAgent={(m, mode, offeredPriceInr) => {
-          handleSelectMentorForAgent(m, mode, offeredPriceInr);
+        onSelectForAgent={(m, mode, offeredPriceInr, serviceTitle) => {
+          handleSelectMentorForAgent(m, mode, offeredPriceInr, serviceTitle);
         }}
       />
     </div>
