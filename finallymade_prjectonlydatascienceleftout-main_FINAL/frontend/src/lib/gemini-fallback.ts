@@ -18,8 +18,13 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
   switch (task) {
     case "agent_orchestrate": {
       const text = (payload.userMessage || "").toLowerCase();
-      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || text.includes("connect");
-      const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat" }> = [];
+      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || text.includes("connect") || text.includes("quote") || text.includes("offer");
+      const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number }> = [];
+
+      // Extract price mentions like "300 rs", "₹300", "for 300", "quote of 300"
+      const priceMatch = text.match(/(?:quote\s+of|offer\s+of|for|price|rs\.?|₹)\s*(\d{2,4})\s*(?:rs|inr|₹)?/i) ||
+        text.match(/(\d{2,4})\s*(?:rs|inr|rupees)/i);
+      const parsedOffer = priceMatch ? parseInt(priceMatch[1], 10) : undefined;
 
       if (isBooking) {
         const available = payload.availableMentors || MENTORS;
@@ -54,6 +59,7 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
                 helperId: m.id,
                 helperName: m.name,
                 mode,
+                offeredPriceInr: parsedOffer,
               });
             }
           }

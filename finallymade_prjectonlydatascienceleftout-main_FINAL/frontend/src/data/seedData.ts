@@ -42,6 +42,7 @@ export interface ReceivedQuote {
   scopeSummary: string;
   helperNote: string;
   communicationMode?: "video" | "chat";
+  offeredPriceInr?: number;
   status: "sent" | "accepted" | "declined";
   createdAt: string;
 }

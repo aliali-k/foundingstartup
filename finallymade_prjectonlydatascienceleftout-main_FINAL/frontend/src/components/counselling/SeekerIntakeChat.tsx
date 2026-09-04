@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { callGeminiTask } from "@/lib/gemini-client";
+import { onQuoteReceived, type ReceivedQuote } from "@/lib/counselling-store";
 
 export interface SeekerStructuredProfile {
   stage: string;
@@ -15,6 +16,8 @@ interface IntakeMessage {
   id: string;
   sender: "ai" | "user";
   text: string;
+  isQuoteNotification?: boolean;
+  quote?: ReceivedQuote;
 }
 
 export function SeekerIntakeChat({
@@ -23,6 +26,7 @@ export function SeekerIntakeChat({
   onProceedToMatches,
   onOpenRefineList,
   onAgentBookingTriggered,
+  onScrollToCompare,
 }: {
   initialContext?: {
     college?: string;
@@ -32,7 +36,8 @@ export function SeekerIntakeChat({
   availableMentors?: Array<{ id: string; name: string; collegeName: string; branch: string }>;
   onProceedToMatches: (profile: SeekerStructuredProfile) => void;
   onOpenRefineList: (profile: SeekerStructuredProfile) => void;
-  onAgentBookingTriggered?: (selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat" }>, queries: string[]) => void;
+  onAgentBookingTriggered?: (selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number }>, queries: string[]) => void;
+  onScrollToCompare?: () => void;
 }) {
   const [profile, setProfile] = useState<SeekerStructuredProfile>({
     stage: "Class 12 / JEE Aspirant",
@@ -51,14 +56,36 @@ export function SeekerIntakeChat({
       id: "m-0",
       sender: "ai",
       text: initialContext?.college
-        ? `Hello! I am your AI Admissions & Mentorship Agent. I coordinate directly with seniors so you don't have to message them one by one. Ask me any doubt, or tell me: "book the video session with Raj and chat session with Kabir" to dispatch your booking request!`
-        : `Hello! I am your AI Admissions & Mentorship Agent. I understand your queries, match you with verified seniors, and dispatch booking requests for you. Tell me your college doubts, or simply tell me: "book the video session with Raj and chat session with Kabir".`,
+        ? `Hello! I am your AI Admissions & Mentorship Agent. I coordinate directly with seniors so you don't have to message them one by one. Ask me any doubt, or tell me: "request a quote of 300 rs with raj for a video meeting" or "book video with Raj and chat with Kabir" to dispatch your booking request with your custom target budget!`
+        : `Hello! I am your AI Admissions & Mentorship Agent. I understand your queries, match you with verified seniors, and dispatch booking requests for you. Tell me your college doubts, or specify your custom budget (e.g. "request a quote of 300 rs with raj for a video meeting").`,
     },
   ]);
 
   const [inputVal, setInputVal] = useState("");
   const [busy, setBusy] = useState(false);
   const [aiStatus, setAiStatus] = useState<string | null>("AI Agent Ready (Gemini Active)");
+
+  // Listen for live quotes returned by helpers and post interactive cards into the chat stream!
+  useEffect(() => {
+    const unsub = onQuoteReceived((newQuote) => {
+      setMessages((prev) => {
+        // Prevent duplicate notification messages
+        if (prev.some((m) => m.quote?.id === newQuote.id)) return prev;
+        return [
+          ...prev,
+          {
+            id: `quote-msg-${newQuote.id}`,
+            sender: "ai",
+            text: `📩 Quote Received from ${newQuote.helperName} (${newQuote.communicationMode === "video" ? "📹 Video Call" : "💬 Text Chat"}) for ₹${newQuote.priceInr}${newQuote.offeredPriceInr ? ` (in response to your ₹${newQuote.offeredPriceInr} offer)` : ""}.\n\n"${newQuote.helperNote}"`,
+            isQuoteNotification: true,
+            quote: newQuote,
+          },
+        ];
+      });
+    });
+
+    return unsub;
+  }, []);
 
   const sendMessage = async (customText?: string) => {
     const text = (customText || inputVal).trim();
@@ -95,7 +122,7 @@ export function SeekerIntakeChat({
         }));
       }
 
-      // Check if user issued a booking command (e.g., "book video session with raj and chat session with kabir")
+      // Check if user issued a booking/quote command (e.g., "request a quote of 300 rs with raj for a video meeting")
       if (res.data?.isBookingIntent && res.data?.selectedMentors?.length > 0) {
         const doubtsToPass = res.data.extractedProfile?.specificDoubts?.length > 0
           ? res.data.extractedProfile.specificDoubts
@@ -113,9 +140,9 @@ export function SeekerIntakeChat({
   };
 
   const quickPrompts = [
+    "Request a quote of ₹300 with Raj for a video meeting",
     "Book the video session with Raj and chat session with Kabir",
-    "Book a video session with Riya Sharma for mechanical core placements",
-    "Deciding between NIT Kurukshetra Mechanical and PEC. How is campus placement?",
+    "Request a quote of ₹180 with Kabir for a chat session",
   ];
 
   return (
@@ -127,7 +154,7 @@ export function SeekerIntakeChat({
           <div className="flex items-center gap-2">
             <span className="size-2 rounded-full bg-blue-500 animate-ping" />
             <span className="mono text-[10px] font-bold uppercase tracking-[0.2em] text-foreground">
-              Conversational Intake Assistant
+              Conversational Intake Assistant & Agent Dispatcher
             </span>
           </div>
           {aiStatus && (
@@ -144,15 +171,53 @@ export function SeekerIntakeChat({
               key={m.id}
               className={`flex ${m.sender === "user" ? "justify-end" : "justify-start"}`}
             >
-              <div
-                className={`max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed font-sans ${
-                  m.sender === "user"
-                    ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xs"
-                    : "bg-muted/70 text-foreground border border-border/60"
-                }`}
-              >
-                {m.text}
-              </div>
+              {m.isQuoteNotification && m.quote ? (
+                <div className="max-w-[90%] rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-2 text-xs font-mono shadow-xs animate-in fade-in slide-in-from-bottom-2">
+                  <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+                      <span className="font-bold text-foreground">{m.quote.helperName}</span>
+                    </div>
+                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                      ₹{m.quote.priceInr}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1 font-sans text-xs">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-mono">
+                      <span>{m.quote.communicationMode === "video" ? "📹 1-on-1 Video Session (30 min)" : "💬 Direct Text Chat (20 min)"}</span>
+                      {m.quote.offeredPriceInr && (
+                        <span className="px-1.5 py-0.2 rounded bg-muted text-muted-foreground border border-border text-[10px]">
+                          Your offer: ₹{m.quote.offeredPriceInr}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-muted-foreground italic text-[11.5px] pt-1">
+                      "{m.quote.helperNote}"
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-emerald-500/20 flex justify-end">
+                    <button
+                      onClick={onScrollToCompare}
+                      className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-[11px] font-bold font-mono transition shadow-xs cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Review in Compare Quotes</span>
+                      <span>↓</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`max-w-[85%] rounded-xl px-4 py-2.5 text-xs leading-relaxed font-sans ${
+                    m.sender === "user"
+                      ? "bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 shadow-xs"
+                      : "bg-muted/70 text-foreground border border-border/60"
+                  }`}
+                >
+                  {m.text}
+                </div>
+              )}
             </div>
           ))}
 
@@ -180,7 +245,7 @@ export function SeekerIntakeChat({
               disabled={busy}
               className="mono text-[9px] px-2.5 py-1 rounded border border-border hover:border-blue-500 text-muted-foreground hover:text-foreground transition disabled:opacity-50"
             >
-              "{q.slice(0, 45)}…"
+              "{q}"
             </button>
           ))}
         </div>

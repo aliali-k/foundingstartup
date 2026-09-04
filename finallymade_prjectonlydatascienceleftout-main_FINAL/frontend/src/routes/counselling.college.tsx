@@ -77,13 +77,14 @@ function CollegeGuidancePage() {
     setProfileModalOpen(true);
   };
 
-  const handleSelectMentorForAgent = (mentor: MentorProfile, mode: "video" | "chat") => {
+  const handleSelectMentorForAgent = (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number) => {
     setSelectedBookings((prev) => {
       const next = new Map(prev);
       next.set(mentor.id, {
         helperId: mentor.id,
         helperName: mentor.name,
         mode,
+        offeredPriceInr,
       });
       return next;
     });
@@ -97,9 +98,9 @@ function CollegeGuidancePage() {
     });
   };
 
-  // Called when Seeker types natural language booking in chat (e.g. "book video session with raj and chat session with kabir")
+  // Called when Seeker types natural language booking in chat (e.g. "request a quote of 300 rs with raj" or "book video session with raj and chat session with kabir")
   const handleAgentBookingTriggered = (
-    selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat" }>,
+    selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number }>,
     queries: string[]
   ) => {
     setSelectedBookings((prev) => {
@@ -187,6 +188,9 @@ function CollegeGuidancePage() {
               setRefineModalOpen(true);
             }}
             onAgentBookingTriggered={handleAgentBookingTriggered}
+            onScrollToCompare={() => {
+              compareSectionRef.current?.scrollIntoView({ behavior: "smooth" });
+            }}
           />
         </section>
 
@@ -218,7 +222,9 @@ function CollegeGuidancePage() {
           {/* Mentor Cards Grid */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredMatches.map((res, idx) => {
-              const selectedMode = selectedBookings.get(res.mentor.id)?.mode || null;
+              const currentBooking = selectedBookings.get(res.mentor.id);
+              const selectedMode = currentBooking?.mode || null;
+              const initialOfferPrice = currentBooking?.offeredPriceInr;
               return (
                 <MentorCard
                   key={res.mentor.id}
@@ -227,6 +233,7 @@ function CollegeGuidancePage() {
                   matchPercentage={res.matchPercentage}
                   reasons={res.highlightReasons}
                   selectedMode={selectedMode}
+                  initialOfferPrice={initialOfferPrice}
                   onSelectForAgent={handleSelectMentorForAgent}
                   onDeselect={handleDeselectMentor}
                   onViewProfile={(m) => handleOpenProfile(m, res.matchPercentage, res.highlightReasons)}
@@ -258,7 +265,7 @@ function CollegeGuidancePage() {
                 No active quote request dispatched yet.
               </span>
               <p className="text-xs text-muted-foreground font-sans max-w-md mx-auto">
-                Tell the AI Agent above: <span className="font-mono text-blue-500">"Book video session with Raj and chat session with Kabir"</span> or select Video/Chat on mentor cards above to generate quotes.
+                Tell the AI Agent above: <span className="font-mono text-blue-500">"Request a quote of 300 rs with Raj for a video meeting"</span> or select Video/Chat on mentor cards above to generate quotes.
               </p>
             </div>
           )}
@@ -275,7 +282,7 @@ function CollegeGuidancePage() {
                 {selectedBookings.size} Mentor{selectedBookings.size > 1 ? "s" : ""} Queued for Agent
               </div>
               <div className="text-[11px] text-muted-foreground font-sans truncate max-w-xs sm:max-w-md">
-                {Array.from(selectedBookings.values()).map(b => `${b.helperName.split(" ")[0]} (${b.mode === "video" ? "📹" : "💬"})`).join(", ")} · {currentProfile.specificDoubts.length} queries attached
+                {Array.from(selectedBookings.values()).map(b => `${b.helperName.split(" ")[0]} (${b.mode === "video" ? "📹" : "💬"}${b.offeredPriceInr ? ` ₹${b.offeredPriceInr}` : ""})`).join(", ")} · {currentProfile.specificDoubts.length} queries attached
               </div>
             </div>
           </div>
@@ -307,8 +314,9 @@ function CollegeGuidancePage() {
         matchPercentage={selectedMentorForProfile?.matchPercentage ?? 94}
         matchReasons={selectedMentorForProfile?.highlightReasons ?? []}
         selectedMode={selectedMentorForProfile ? selectedBookings.get(selectedMentorForProfile.mentor.id)?.mode : null}
-        onSelectForAgent={(m, mode) => {
-          handleSelectMentorForAgent(m, mode);
+        initialOfferPrice={selectedMentorForProfile ? selectedBookings.get(selectedMentorForProfile.mentor.id)?.offeredPriceInr : undefined}
+        onSelectForAgent={(m, mode, offeredPriceInr) => {
+          handleSelectMentorForAgent(m, mode, offeredPriceInr);
         }}
       />
     </div>

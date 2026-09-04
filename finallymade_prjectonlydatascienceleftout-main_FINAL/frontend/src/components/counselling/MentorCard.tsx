@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { type MentorProfile } from "@/data/mentors";
 
 export function MentorCard({
@@ -6,6 +7,7 @@ export function MentorCard({
   matchPercentage = 92,
   reasons = [],
   selectedMode = null,
+  initialOfferPrice,
   onSelectForAgent,
   onDeselect,
   onViewProfile,
@@ -15,12 +17,17 @@ export function MentorCard({
   matchPercentage?: number;
   reasons?: string[];
   selectedMode?: "video" | "chat" | null;
-  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat") => void;
+  initialOfferPrice?: number;
+  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number) => void;
   onDeselect?: (mentor: MentorProfile) => void;
   onViewProfile: (mentor: MentorProfile) => void;
 }) {
   const displayReasons = reasons.length > 0 ? reasons.slice(0, 3) : mentor.highlightMatchReasons.slice(0, 3);
   const isSelected = selectedMode !== null;
+  const defaultPrice = selectedMode === "chat" ? Math.round(mentor.priceRange.min * 0.75) : mentor.priceRange.min;
+  const [customOffer, setCustomOffer] = useState<string>(
+    initialOfferPrice ? String(initialOfferPrice) : ""
+  );
 
   return (
     <div
@@ -133,7 +140,8 @@ export function MentorCard({
                 if (selectedMode === "video") {
                   onDeselect?.(mentor);
                 } else {
-                  onSelectForAgent?.(mentor, "video");
+                  const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
+                  onSelectForAgent?.(mentor, "video", isNaN(offerVal!) ? undefined : offerVal);
                 }
               }}
               className={`rounded-lg py-1.5 px-2 text-center font-mono text-[10.5px] font-bold transition flex items-center justify-center gap-1 cursor-pointer border ${
@@ -153,7 +161,8 @@ export function MentorCard({
                 if (selectedMode === "chat") {
                   onDeselect?.(mentor);
                 } else {
-                  onSelectForAgent?.(mentor, "chat");
+                  const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
+                  onSelectForAgent?.(mentor, "chat", isNaN(offerVal!) ? undefined : offerVal);
                 }
               }}
               className={`rounded-lg py-1.5 px-2 text-center font-mono text-[10.5px] font-bold transition flex items-center justify-center gap-1 cursor-pointer border ${
@@ -166,6 +175,31 @@ export function MentorCard({
               {selectedMode === "chat" ? <span>✓</span> : <span className="opacity-60 text-[9px]">20m</span>}
             </button>
           </div>
+
+          {/* Target / Offer Price Input when selected */}
+          {isSelected && (
+            <div className="flex items-center justify-between gap-2 rounded-lg bg-blue-500/10 border border-blue-500/30 px-2.5 py-1.5 animate-in fade-in">
+              <span className="mono text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                Your Offer Price:
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="mono text-xs font-bold text-foreground">₹</span>
+                <input
+                  type="number"
+                  placeholder={String(defaultPrice)}
+                  value={customOffer}
+                  onChange={(e) => {
+                    setCustomOffer(e.target.value);
+                    const val = e.target.value ? parseInt(e.target.value, 10) : undefined;
+                    if (selectedMode) {
+                      onSelectForAgent?.(mentor, selectedMode, isNaN(val!) ? undefined : val);
+                    }
+                  }}
+                  className="w-16 rounded border border-blue-500/40 bg-background px-1.5 py-0.5 mono text-xs font-bold text-foreground outline-none text-right focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
 
           <button
             type="button"

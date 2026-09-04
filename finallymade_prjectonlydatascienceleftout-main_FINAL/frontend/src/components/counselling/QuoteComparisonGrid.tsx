@@ -207,6 +207,19 @@ export function QuoteComparisonGrid({
                     <span className="text-[9px] text-muted-foreground block font-mono">
                       {q.estimatedDurationMin} min {q.communicationMode === "video" ? "call" : "chat"}
                     </span>
+                    {q.offeredPriceInr && (
+                      <div className="mt-1">
+                        {q.priceInr === q.offeredPriceInr ? (
+                          <span className="mono text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            Offer matched (₹{q.offeredPriceInr})
+                          </span>
+                        ) : (
+                          <span className="mono text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                            Counter: ₹{q.offeredPriceInr} → ₹{q.priceInr}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -219,7 +232,7 @@ export function QuoteComparisonGrid({
                     {q.scopeSummary}
                   </p>
 
-                  <div className="rounded-lg bg-muted/40 p-2.5 text-[10.5px] text-muted-foreground font-sans italic">
+                  <div className="rounded-lg bg-muted/40 p-2.5 text-[10.5px] text-muted-foreground font-sans italic border-l-2 border-blue-500">
                     "{q.helperNote}"
                   </div>
                 </div>

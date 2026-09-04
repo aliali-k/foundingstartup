@@ -8,6 +8,7 @@ export function MentorProfileModal({
   matchReasons = [],
   isOpen,
   selectedMode = null,
+  initialOfferPrice,
   onClose,
   onSelectForAgent,
 }: {
@@ -16,10 +17,14 @@ export function MentorProfileModal({
   matchReasons?: string[];
   isOpen: boolean;
   selectedMode?: "video" | "chat" | null;
+  initialOfferPrice?: number;
   onClose: () => void;
-  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat") => void;
+  onSelectForAgent?: (mentor: MentorProfile, mode: "video" | "chat", offeredPriceInr?: number) => void;
 }) {
   const [selectedTab, setSelectedTab] = useState<"all" | "call" | "chat" | "audit">("all");
+  const [customOffer, setCustomOffer] = useState<string>(
+    initialOfferPrice ? String(initialOfferPrice) : ""
+  );
 
   if (!isOpen || !mentor) return null;
 
@@ -148,18 +153,32 @@ export function MentorProfileModal({
             </div>
 
             {/* Primary Action Button - Agent Mediated */}
-            <div className="pt-2 border-t border-border/60 space-y-2">
-              <div className="mono text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400">
-                ◆ Book via Central AI Agent
+            <div className="pt-2 border-t border-border/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="mono text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400">
+                  ◆ Book via Central AI Agent
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="mono text-[10px] text-muted-foreground font-bold">Offer: ₹</span>
+                  <input
+                    type="number"
+                    placeholder={String(mentor.priceRange.min)}
+                    value={customOffer}
+                    onChange={(e) => setCustomOffer(e.target.value)}
+                    className="w-16 rounded border border-border bg-background px-1.5 py-0.5 mono text-xs font-bold text-foreground outline-none text-right focus:border-blue-500"
+                  />
+                </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
-                    onSelectForAgent?.(mentor, "video");
+                    const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
+                    onSelectForAgent?.(mentor, "video", isNaN(offerVal!) ? undefined : offerVal);
                   }}
-                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold py-2.5 text-center transition shadow-xs flex items-center justify-center gap-1.5"
+                  className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-mono text-xs font-bold py-2.5 text-center transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>📹 Video Call</span>
                 </button>
@@ -167,9 +186,10 @@ export function MentorProfileModal({
                   type="button"
                   onClick={() => {
                     onClose();
-                    onSelectForAgent?.(mentor, "chat");
+                    const offerVal = customOffer ? parseInt(customOffer, 10) : undefined;
+                    onSelectForAgent?.(mentor, "chat", isNaN(offerVal!) ? undefined : offerVal);
                   }}
-                  className="rounded-xl border border-border bg-background hover:border-blue-500 text-foreground font-mono text-xs font-bold py-2.5 text-center transition flex items-center justify-center gap-1.5"
+                  className="rounded-xl border border-border bg-background hover:border-blue-500 text-foreground font-mono text-xs font-bold py-2.5 text-center transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>💬 Text Chat</span>
                 </button>

@@ -79,6 +79,7 @@ export interface AgentMentorBooking {
   helperId: string;
   helperName: string;
   mode: "video" | "chat";
+  offeredPriceInr?: number;
 }
 
 // ── Quote Arrival Event Bus ──
@@ -114,7 +115,7 @@ export function createAgentBookingRequest({
     seekerType: "class_12_jee",
     title,
     category: "college_guidance",
-    rawText: `Agent dispatched request with ${questions.length} queries to ${mentorBookings.map((m) => `${m.helperName} (${m.mode})`).join(", ")}`,
+    rawText: `Agent dispatched request with ${questions.length} queries to ${mentorBookings.map((m) => `${m.helperName} (${m.mode}${m.offeredPriceInr ? ` · offered ₹${m.offeredPriceInr}` : ""})`).join(", ")}`,
     normalizedSummary: `Doubts regarding: ${questions.slice(0, 3).join("; ")}. Booked via AI Agent.`,
     context: {
       consideredColleges: context.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
@@ -138,7 +139,7 @@ export function createAgentBookingRequest({
 
   saveRequest(newReq);
 
-  // Progressive simulated helper quote arrival
+  // Progressive simulated helper quote arrival with realistic negotiation
   mentorBookings.forEach((booking, index) => {
     const helper = MENTORS.find((m) => m.id === booking.helperId);
     if (!helper) return;
@@ -148,10 +149,28 @@ export function createAgentBookingRequest({
 
     setTimeout(() => {
       const isVideo = booking.mode === "video";
-      const basePrice = isVideo 
+      const standardBasePrice = isVideo 
         ? Math.round(helper.priceRange.min * 1.15) 
         : Math.round(helper.priceRange.min * 0.7);
-      const roundedPrice = Math.max(150, Math.round(basePrice / 10) * 10);
+
+      let finalPrice = Math.max(150, Math.round(standardBasePrice / 10) * 10);
+      let helperNote = `Hi ${seekerName}! I reviewed your doubts regarding ${helper.collegeName}. Ready to share verified campus data and realistic trade-offs.`;
+
+      // If seeker offered a custom target price (e.g. ₹300 when mentor base is ₹350)
+      if (booking.offeredPriceInr && booking.offeredPriceInr > 0) {
+        const offer = booking.offeredPriceInr;
+        if (offer >= standardBasePrice) {
+          // Seeker offered at or above base price -> accepted!
+          finalPrice = offer;
+          helperNote = `Hi ${seekerName}! I accepted your proposed quote of ₹${offer}. Looking forward to our ${isVideo ? "video meeting" : "chat session"} to solve your doubts!`;
+        } else {
+          // Seeker offered lower price -> helper provides a warm counter-offer meeting midway
+          const counter = Math.round((standardBasePrice + offer) / 20) * 10;
+          finalPrice = Math.max(offer, counter);
+          helperNote = `Hi ${seekerName}! I saw your offered request of ₹${offer}. I can meet you at ₹${finalPrice} for a dedicated ${isVideo ? "30-min video strategy session" : "20-min direct chat"} to cover your ${newReq.questions.length} queries.`;
+        }
+      }
+
       const durationMin = isVideo ? 30 : 20;
 
       const newQuote: ReceivedQuote = {
@@ -164,12 +183,13 @@ export function createAgentBookingRequest({
         serviceId: isVideo ? "1-on-1-video-strategy" : "focused-chat-qa",
         serviceTitle: isVideo ? "1-on-1 Video Strategy Session" : "Focused Q&A Chat Session",
         communicationMode: booking.mode,
-        priceInr: roundedPrice,
+        offeredPriceInr: booking.offeredPriceInr,
+        priceInr: finalPrice,
         estimatedDurationMin: durationMin,
         scopeSummary: isVideo
           ? `30-min live video session resolving your specific queries: ${newReq.questions.slice(0, 2).join("; ")}.`
           : `20-min focused direct text chat covering your queries: ${newReq.questions.slice(0, 2).join("; ")}.`,
-        helperNote: `Hi ${seekerName}! I reviewed your doubts regarding ${helper.collegeName}. Ready to share verified campus data and realistic trade-offs.`,
+        helperNote,
         status: "sent",
         createdAt: new Date().toISOString(),
       };
