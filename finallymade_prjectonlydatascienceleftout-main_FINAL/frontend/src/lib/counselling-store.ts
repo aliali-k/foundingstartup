@@ -95,28 +95,30 @@ export function onQuoteReceived(listener: QuoteListener) {
 
 // ── Agent-Mediated Multi-Mentor Request Dispatch ──
 export function createAgentBookingRequest({
+  existingRequestId,
   seekerName = "Candidate",
   title = "JoSAA / NEET College & Branch Guidance",
   questions = [],
   mentorBookings = [],
   context = {},
 }: {
+  existingRequestId?: string;
   seekerName?: string;
   title?: string;
   questions: string[];
   mentorBookings: AgentMentorBooking[];
   context?: any;
 }): CounsellingRequest {
-  const reqId = `req-agent-${Date.now()}`;
-  const newReq: CounsellingRequest = {
-    id: reqId,
+  const existingReq = existingRequestId ? getRequestById(existingRequestId) : undefined;
+  const targetReq: CounsellingRequest = existingReq || {
+    id: `req-agent-${Date.now()}`,
     seekerId: "seeker-demo-user",
     seekerName,
     seekerType: "class_12_jee",
     title,
     category: "college_guidance",
-    rawText: `Agent dispatched request with ${questions.length} queries to ${mentorBookings.map((m) => `${m.helperName} (${m.mode}${m.offeredPriceInr ? ` · offered ₹${m.offeredPriceInr}` : ""})`).join(", ")}`,
-    normalizedSummary: `Doubts regarding: ${questions.slice(0, 3).join("; ")}. Booked via AI Agent.`,
+    rawText: "",
+    normalizedSummary: "",
     context: {
       consideredColleges: context.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
       preferredBranches: context.preferredBranches || ["Mechanical Engineering"],
@@ -131,21 +133,40 @@ export function createAgentBookingRequest({
     ],
     requestedServiceId: "college-branch-deep-dive",
     preferredFormat: mentorBookings.some((m) => m.mode === "video") ? "call" : "chat",
-    sentToHelperIds: mentorBookings.map((m) => m.helperId),
+    sentToHelperIds: [],
     receivedQuotes: [],
     status: "open",
     createdAt: new Date().toISOString(),
   };
 
-  saveRequest(newReq);
+  // Merge questions
+  if (questions.length > 0) {
+    const combined = Array.from(new Set([...targetReq.questions, ...questions]));
+    targetReq.questions = combined;
+  }
+
+  // Merge sentToHelperIds
+  const helperIdSet = new Set(targetReq.sentToHelperIds);
+  mentorBookings.forEach((b) => helperIdSet.add(b.helperId));
+  targetReq.sentToHelperIds = Array.from(helperIdSet);
+
+  // Update summary & text
+  targetReq.rawText = `Agent request with ${targetReq.questions.length} queries dispatched to ${targetReq.sentToHelperIds.length} mentors.`;
+  targetReq.normalizedSummary = `Doubts regarding: ${targetReq.questions.slice(0, 3).join("; ")}. Booked via AI Agent.`;
+
+  saveRequest(targetReq);
 
   // Progressive simulated helper quote arrival with realistic negotiation
+  // Only dispatch simulated responses for new bookings or updated offers
   mentorBookings.forEach((booking, index) => {
     const helper = MENTORS.find((m) => m.id === booking.helperId);
     if (!helper) return;
 
-    // First quote returns almost immediately, next ones progressively
-    const delayMs = index === 0 ? 500 : (index * 1600 + 400);
+    // Check if this helper already quoted in this request
+    const existingQuoteIndex = targetReq.receivedQuotes.findIndex((q) => q.helperId === booking.helperId);
+
+    // Stagger arrival time: first new one fast, subsequent ones progressive
+    const delayMs = index === 0 ? 500 : (index * 1400 + 400);
 
     setTimeout(() => {
       const isVideo = booking.mode === "video";
@@ -160,14 +181,12 @@ export function createAgentBookingRequest({
       if (booking.offeredPriceInr && booking.offeredPriceInr > 0) {
         const offer = booking.offeredPriceInr;
         if (offer >= standardBasePrice) {
-          // Seeker offered at or above base price -> accepted!
           finalPrice = offer;
           helperNote = `Hi ${seekerName}! I accepted your proposed quote of ₹${offer}. Looking forward to our ${isVideo ? "video meeting" : "chat session"} to solve your doubts!`;
         } else {
-          // Seeker offered lower price -> helper provides a warm counter-offer meeting midway
           const counter = Math.round((standardBasePrice + offer) / 20) * 10;
           finalPrice = Math.max(offer, counter);
-          helperNote = `Hi ${seekerName}! I saw your offered request of ₹${offer}. I can meet you at ₹${finalPrice} for a dedicated ${isVideo ? "30-min video strategy session" : "20-min direct chat"} to cover your ${newReq.questions.length} queries.`;
+          helperNote = `Hi ${seekerName}! I saw your offered request of ₹${offer}. I can meet you at ₹${finalPrice} for a dedicated ${isVideo ? "30-min video strategy session" : "20-min direct chat"} to cover your queries.`;
         }
       }
 
@@ -175,7 +194,7 @@ export function createAgentBookingRequest({
 
       const newQuote: ReceivedQuote = {
         id: `quote-${helper.id}-${Date.now()}`,
-        requestId: newReq.id,
+        requestId: targetReq.id,
         helperId: helper.id,
         helperName: helper.name,
         helperRole: `${helper.currentRole} (${helper.collegeName})`,
@@ -187,26 +206,32 @@ export function createAgentBookingRequest({
         priceInr: finalPrice,
         estimatedDurationMin: durationMin,
         scopeSummary: isVideo
-          ? `30-min live video session resolving your specific queries: ${newReq.questions.slice(0, 2).join("; ")}.`
-          : `20-min focused direct text chat covering your queries: ${newReq.questions.slice(0, 2).join("; ")}.`,
+          ? `30-min live video session resolving your specific queries: ${targetReq.questions.slice(0, 2).join("; ")}.`
+          : `20-min focused direct text chat covering your queries: ${targetReq.questions.slice(0, 2).join("; ")}.`,
         helperNote,
         status: "sent",
         createdAt: new Date().toISOString(),
       };
 
-      const freshReq = getRequestById(newReq.id);
+      const freshReq = getRequestById(targetReq.id);
       if (freshReq) {
-        freshReq.receivedQuotes.push(newQuote);
+        if (existingQuoteIndex >= 0) {
+          // Replace or update existing quote for this mentor
+          freshReq.receivedQuotes[existingQuoteIndex] = newQuote;
+        } else {
+          // Append new quote alongside previous quotes!
+          freshReq.receivedQuotes.push(newQuote);
+        }
         freshReq.status = "quoted";
         saveRequest(freshReq);
       }
 
       // Broadcast to UI listeners
-      quoteListeners.forEach((fn) => fn(newQuote, newReq.id));
+      quoteListeners.forEach((fn) => fn(newQuote, targetReq.id));
     }, delayMs);
   });
 
-  return newReq;
+  return targetReq;
 }
 
 // ── Multi-Mentor Broadcast ──

@@ -11,17 +11,88 @@ export interface GeminiTaskResponse {
 }
 
 // Mentor aliases and fuzzy name mappings
-const MENTOR_ALIASES: Record<string, string[]> = {
-  "aarav-patel-pec": ["aarav", "arnav", "arav", "patel", "aarav patel", "arnav patel"],
-  "rajat-verma-nitkkr": ["raj", "rajat", "verma", "rajat verma", "raj sharma"],
-  "kabir-mehta-iitk": ["kabir", "mehta", "kabir mehta"],
-  "riya-sharma-nitkkr": ["riya", "sharma", "riya sharma"],
-  "sneha-rao-msft": ["sneha", "rao", "sneha rao"],
-  "vikramaditya-sen-staff": ["vikram", "vikramaditya", "sen"],
-  "arjun-nambiar-razorpay": ["arjun", "nambiar"],
-  "tanvi-thakur-nith": ["tanvi", "thakur"],
-  "dr-ananya-das-aiims": ["ananya", "das", "dr ananya"],
-  "dr-rohit-malhotra-mamc": ["rohit", "malhotra", "dr rohit"],
+interface MentorAliasConfig {
+  full: string[];
+  first: string[];
+  last: string[];
+}
+
+const MENTOR_ALIASES: Record<string, MentorAliasConfig> = {
+  "aarav-patel-pec": {
+    full: ["aarav patel", "arnav patel", "arav patel"],
+    first: ["aarav", "arnav", "arav"],
+    last: ["patel"],
+  },
+  "rajat-verma-nitkkr": {
+    full: ["rajat verma", "raj sharma", "raj verma", "rajat sharma"],
+    first: ["raj", "rajat"],
+    last: ["verma"],
+  },
+  "yash-agrawal-iiith": {
+    full: ["yash agrawal", "yash agarwal", "yash aggrawal"],
+    first: ["yash"],
+    last: ["agrawal", "agarwal", "aggrawal"],
+  },
+  "kabir-mehta-iitk": {
+    full: ["kabir mehta"],
+    first: ["kabir"],
+    last: ["mehta"],
+  },
+  "riya-sharma-nitkkr": {
+    full: ["riya sharma"],
+    first: ["riya"],
+    last: ["sharma"],
+  },
+  "sneha-rao-msft": {
+    full: ["sneha rao", "sneha kulkarni"],
+    first: ["sneha"],
+    last: ["rao", "kulkarni"],
+  },
+  "divyanshu-verma-iitbhu": {
+    full: ["divyanshu verma"],
+    first: ["divyanshu"],
+    last: ["verma"],
+  },
+  "karthik-s-nitt": {
+    full: ["karthik sundaram"],
+    first: ["karthik"],
+    last: ["sundaram"],
+  },
+  "neha-reddy-nitw": {
+    full: ["neha reddy"],
+    first: ["neha"],
+    last: ["reddy"],
+  },
+  "rohan-kulkarni-iith": {
+    full: ["rohan kulkarni"],
+    first: ["rohan"],
+    last: ["kulkarni"],
+  },
+  "vikramaditya-sen-staff": {
+    full: ["vikramaditya sen", "vikram sen"],
+    first: ["vikramaditya", "vikram"],
+    last: ["sen"],
+  },
+  "arjun-nambiar-razorpay": {
+    full: ["arjun nambiar"],
+    first: ["arjun"],
+    last: ["nambiar"],
+  },
+  "tanvi-thakur-nith": {
+    full: ["tanvi thakur"],
+    first: ["tanvi"],
+    last: ["thakur"],
+  },
+  "dr-ananya-das-aiims": {
+    full: ["dr ananya das", "dr ananya", "ananya das"],
+    first: ["ananya"],
+    last: ["das"],
+  },
+  "dr-rohit-malhotra-mamc": {
+    full: ["dr rohit malhotra", "dr rohit", "rohit malhotra"],
+    first: ["rohit"],
+    last: ["malhotra"],
+  },
 };
 
 /**
@@ -33,9 +104,11 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
   switch (task) {
     case "agent_orchestrate": {
       const text = (payload.userMessage || "").toLowerCase();
+      const cleanText = text.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, " ").replace(/\s+/g, " ");
 
       // 1. Check if user is responding to a pending price request
-      const priceOnlyMatch = text.match(/(?:offer|price|for)?\s*(?:rs\.?|₹)?\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i);
+      const priceOnlyMatch = text.match(/(?:offer|price|for)?\s*(?:rs\.?|₹)?\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i) ||
+        text.match(/^\s*(\d{2,4})\s*$/);
       const pending = payload.pendingBooking;
 
       if (pending && priceOnlyMatch && parseInt(priceOnlyMatch[1], 10) >= 50) {
@@ -64,117 +137,147 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
         };
       }
 
-      // 2. Booking intent detection
-      const isBooking = text.includes("book") || text.includes("session") || text.includes("call") || 
-        text.includes("connect") || text.includes("quote") || text.includes("offer") || 
-        text.includes("request") || text.includes("meet") || text.includes("audit");
+      // 2. Multi-level Mentor Identification
+      const matchedMentorsList: Array<{
+        mentor: typeof MENTORS[0];
+        score: number;
+        matchedToken: string;
+      }> = [];
 
-      // Extract price mentions like "350 rs", "for 350", "₹300", "offer of 280", etc.
-      const priceMatch = text.match(/(?:quote\s+of|offer\s+of|for|price\s+of|at|rs\.?|₹)\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i) ||
+      MENTORS.forEach((m) => {
+        const aliasConfig = MENTOR_ALIASES[m.id];
+        const firstName = m.name.toLowerCase().split(" ")[0];
+        const lastName = m.name.toLowerCase().split(" ")[1] || "";
+
+        const fullAliases = aliasConfig?.full || [m.name.toLowerCase()];
+        const firstAliases = aliasConfig?.first || [firstName];
+        const lastAliases = aliasConfig?.last || [lastName].filter(Boolean);
+
+        // Level 3: Full name or specific multi-word alias match (e.g. "raj sharma", "yash agarwal")
+        const matchedFull = fullAliases.find((fa) => cleanText.includes(fa));
+        if (matchedFull) {
+          matchedMentorsList.push({ mentor: m, score: 3, matchedToken: matchedFull });
+          return;
+        }
+
+        // Level 2: First name match (e.g. "raj", "yash", "arnav", "kabir", "riya")
+        const matchedFirst = firstAliases.find((fa) => new RegExp(`\\b${fa}\\b`, "i").test(cleanText));
+        if (matchedFirst) {
+          matchedMentorsList.push({ mentor: m, score: 2, matchedToken: matchedFirst });
+          return;
+        }
+
+        // Level 1: Last name match
+        const matchedLast = lastAliases.find((la) => new RegExp(`\\b${la}\\b`, "i").test(cleanText));
+        if (matchedLast) {
+          matchedMentorsList.push({ mentor: m, score: 1, matchedToken: matchedLast });
+        }
+      });
+
+      // Filter out accidental surname collisions:
+      // If ANY mentor matched on first or full name (score >= 2), discard mentors that ONLY matched on surname (score 1)
+      const hasHigherMatches = matchedMentorsList.some((mm) => mm.score >= 2);
+      const filteredMatches = matchedMentorsList.filter((mm) => {
+        if (mm.score >= 2) return true;
+        return !hasHigherMatches;
+      });
+
+      // 3. Extract Price
+      const priceMatch = text.match(/(?:quote\s+of|offer\s+of|for|price\s+of|at|budget\s+of|rs\.?|₹)\s*(\d{2,4})\s*(?:rs|inr|₹|rupees)?/i) ||
         text.match(/\b(\d{2,4})\s*(?:rs|inr|rupees)\b/i) ||
         text.match(/(?:rs\.?|₹)\s*(\d{2,4})\b/i);
       const parsedOffer = priceMatch ? parseInt(priceMatch[1], 10) : undefined;
 
-      // Extract any matched service from PLATFORM_SERVICES
+      // 4. Topic and Service Resolution
       const matchedService = PLATFORM_SERVICES.find((s) => {
         const titleLower = s.title.toLowerCase();
         return text.includes(titleLower) || 
           (titleLower.includes("system design") && text.includes("system design")) ||
-          (titleLower.includes("sde-1") && text.includes("sde-1")) ||
-          (titleLower.includes("choice order") && text.includes("choice order")) ||
-          (titleLower.includes("branch deep-dive") && (text.includes("deep dive") || text.includes("deep-dive")));
+          (titleLower.includes("sde-1") && (text.includes("sde") || text.includes("sde1") || text.includes("sde2"))) ||
+          (titleLower.includes("choice order") && (text.includes("choice order") || text.includes("josaa") || text.includes("jossa")));
       });
+
+      let serviceTitle = matchedService?.title || "1-on-1 Live Strategy Session";
+      let doubtList = payload.currentContext?.specificDoubts || [
+        "Core company placements vs IT opportunities on campus",
+        "Hostel facilities, mess food and campus culture reality",
+        "Branch change rules and CGPA cutoffs"
+      ];
+
+      if (/\b(sde|sde1|sde2|system\s+design)\b/i.test(cleanText)) {
+        serviceTitle = "SDE-1 to SDE-2 Promotion & System Design Audit";
+        doubtList = [
+          "SDE-1 to SDE-2 promotion roadmap & scope expansion",
+          "System Design & distributed architecture interview preparation",
+          "Manager 1:1 impact packet framing & promo pacing"
+        ];
+      } else if (/\b(josaa|jossa|csab|choice|councelling|counselling|counseling)\b/i.test(cleanText)) {
+        serviceTitle = "JoSAA Choice Order Strategy & Mock Counselling";
+        doubtList = [
+          "JoSAA & CSAB round-by-round choice filling priority order",
+          "Branch vs College tier prioritization trade-offs",
+          "Seat acceptance, Float vs Slide decision matrix"
+        ];
+      } else if (/\b(neet|medical|bond|dme)\b/i.test(cleanText)) {
+        serviceTitle = "NEET DME State Bond & Clinical Career Audit";
+        doubtList = [
+          "State DME rural service bond penalties & bank guarantees",
+          "Clinical department exposure & PG residency pass rates",
+          "Hostel facilities & clinical patient load reality"
+        ];
+      }
+
+      // 5. Booking Intent Detection (Robust against edge cases where user omits "book")
+      const bookingRegex = /\b(book|booking|quote|quotes|session|sessions|call|calls|meeting|consult|consulting|counseling|counselling|councelling|counceling|hire|connect|talk\s+to|schedule|request|meet|audit)\b/i;
+      const hasBookingWord = bookingRegex.test(text);
+      const hasTopic = /\b(sde|sde1|sde2|josaa|jossa|csab|neet|bond|councelling|counselling|choice|order|mock)\b/i.test(text);
+      const isBooking = hasBookingWord || (filteredMatches.length > 0 && (parsedOffer !== undefined || hasTopic));
 
       const selectedMentors: Array<{ helperId: string; helperName: string; mode: "video" | "chat"; offeredPriceInr?: number; serviceTitle?: string }> = [];
       let pendingMentor: any = null;
 
-      if (isBooking) {
-        // Search across all mentors in MENTORS
-        MENTORS.forEach((m) => {
-          const lowerName = m.name.toLowerCase();
-          const firstName = lowerName.split(" ")[0];
-          const lastName = lowerName.split(" ")[1] || "";
-          const aliases = MENTOR_ALIASES[m.id] || [firstName];
+      if (isBooking && filteredMatches.length > 0) {
+        filteredMatches.forEach(({ mentor: m, matchedToken }) => {
+          // Determine communication mode (video vs chat)
+          let mode: "video" | "chat" = matchedService?.format === "chat" ? "chat" : "video";
+          const tokenIdx = cleanText.indexOf(matchedToken.toLowerCase());
+          const prefix = tokenIdx >= 0 ? cleanText.slice(Math.max(0, tokenIdx - 40), tokenIdx) : cleanText;
+          const lastVideoIdx = prefix.lastIndexOf("video");
+          const lastChatIdx = prefix.lastIndexOf("chat");
 
-          // Check if text matches mentor name, last name, or any alias (e.g. arnav -> aarav patel)
-          const matchesMentor = aliases.some((a) => text.includes(a)) ||
-            (lastName.length > 2 && text.includes(lastName)) ||
-            text.includes(lowerName) ||
-            (matchedService && m.supportedServiceIds.includes(matchedService.id) && text.includes(firstName));
+          if (lastChatIdx >= 0 && lastChatIdx > lastVideoIdx) {
+            mode = "chat";
+          } else if (lastVideoIdx >= 0 && lastVideoIdx >= lastChatIdx) {
+            mode = "video";
+          } else if (cleanText.includes("chat") && !cleanText.includes("video")) {
+            mode = "chat";
+          } else if (cleanText.includes("video") && !cleanText.includes("chat")) {
+            mode = "video";
+          }
 
-          if (matchesMentor) {
-            // Determine mode
-            let mode: "video" | "chat" = matchedService?.format === "chat" ? "chat" : "video";
-            const mentorIdx = text.indexOf(firstName);
-            const prefix = mentorIdx >= 0 ? text.slice(Math.max(0, mentorIdx - 40), mentorIdx) : text;
-            const lastVideoIdx = prefix.lastIndexOf("video");
-            const lastChatIdx = prefix.lastIndexOf("chat");
-
-            if (lastChatIdx >= 0 && lastChatIdx > lastVideoIdx) {
-              mode = "chat";
-            } else if (lastVideoIdx >= 0 && lastVideoIdx >= lastChatIdx) {
-              mode = "video";
-            } else if (text.includes("chat") && !text.includes("video")) {
-              mode = "chat";
-            } else if (text.includes("video") && !text.includes("chat")) {
-              mode = "video";
-            }
-
-            const serviceTitle = matchedService?.title || (mode === "video" ? "1-on-1 Video Session" : "Direct Text Chat");
-
-            if (!selectedMentors.some((sm) => sm.helperId === m.id)) {
-              if (parsedOffer !== undefined) {
-                selectedMentors.push({
-                  helperId: m.id,
-                  helperName: m.name,
-                  mode,
-                  offeredPriceInr: parsedOffer,
-                  serviceTitle,
-                });
-              } else {
-                pendingMentor = {
-                  helperId: m.id,
-                  helperName: m.name,
-                  mode,
-                  basePriceInr: matchedService?.basePriceInr || m.priceRange.min,
-                  serviceTitle,
-                };
-              }
+          if (!selectedMentors.some((sm) => sm.helperId === m.id)) {
+            if (parsedOffer !== undefined) {
+              selectedMentors.push({
+                helperId: m.id,
+                helperName: m.name,
+                mode,
+                offeredPriceInr: parsedOffer,
+                serviceTitle,
+              });
+            } else if (!pendingMentor) {
+              pendingMentor = {
+                helperId: m.id,
+                helperName: m.name,
+                mode,
+                basePriceInr: matchedService?.basePriceInr || m.priceRange.min,
+                serviceTitle,
+              };
             }
           }
         });
-
-        // Fallback: If service is mentioned but no specific mentor name was found, pick top mentor supporting that service
-        if (matchedService && selectedMentors.length === 0 && !pendingMentor) {
-          const mentorForService = MENTORS.find((m) => m.supportedServiceIds.includes(matchedService.id)) || MENTORS[0];
-          const mode = matchedService.format === "chat" ? "chat" : "video";
-          if (parsedOffer !== undefined) {
-            selectedMentors.push({
-              helperId: mentorForService.id,
-              helperName: mentorForService.name,
-              mode,
-              offeredPriceInr: parsedOffer,
-              serviceTitle: matchedService.title,
-            });
-          } else {
-            pendingMentor = {
-              helperId: mentorForService.id,
-              helperName: mentorForService.name,
-              mode,
-              basePriceInr: matchedService.basePriceInr,
-              serviceTitle: matchedService.title,
-            };
-          }
-        }
       }
 
-      const doubtList = payload.currentContext?.specificDoubts || [
-        "Core placements and off-campus IT eligibility",
-        "Hostel environment & senior mentorship",
-        "Curriculum flexibility & branch change threshold"
-      ];
-
-      // If price was missing: Ask user for their price!
+      // If price was missing: Gate dispatch behind the pricing barrier!
       if (pendingMentor && selectedMentors.length === 0) {
         return {
           success: true,

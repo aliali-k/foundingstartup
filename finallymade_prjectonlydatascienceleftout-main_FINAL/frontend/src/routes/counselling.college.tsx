@@ -125,6 +125,7 @@ function CollegeGuidancePage() {
     });
 
     const req = createAgentBookingRequest({
+      existingRequestId: activeRequestId || undefined,
       seekerName: "Candidate",
       title: `${currentProfile.consideredColleges[0] || "College"} Admissions & Branch Strategy`,
       questions: queries.length > 0 ? queries : currentProfile.specificDoubts,
@@ -146,6 +147,7 @@ function CollegeGuidancePage() {
     if (bookings.length === 0) return;
 
     const req = createAgentBookingRequest({
+      existingRequestId: activeRequestId || undefined,
       seekerName: "Candidate",
       title: `${currentProfile.consideredColleges[0] || "College"} Guidance`,
       questions: currentProfile.specificDoubts,
@@ -163,6 +165,7 @@ function CollegeGuidancePage() {
   const activeRequest: CounsellingRequest | undefined =
     (activeRequestId && getRequestById(activeRequestId)) ||
     (search.requestId && getRequestById(search.requestId)) ||
+    getAllRequests().find((r) => r.status === "quoted" || r.status === "open") ||
     undefined;
 
   return (

@@ -102,9 +102,15 @@ Current context profile: ${JSON.stringify(payload.currentContext || {})}.
 Pending booking: ${JSON.stringify(payload.pendingBooking || null)}.
 Available matching mentors: ${JSON.stringify(payload.availableMentors || [])}.
 Task:
-1. Detect if the user is asking to book, request quotes, or schedule sessions with mentors (e.g., "book a request with arnav patel for SDE-1 to SDE-2 Promotion & System Design Audit for 350 rs", "request a quote of 300 rs with raj", "book video session with raj").
-2. Match mentors robustly with aliases, typos, and surnames (e.g. 'arnav' or 'patel' -> 'Aarav Patel', 'raj' or 'raj sharma' -> 'Rajat Verma (Raj)', 'kabir' -> 'Kabir Mehta', 'riya' -> 'Riya Sharma', 'sneha' -> 'Sneha Rao', 'vikram' -> 'Vikramaditya Sen').
-3. Match any mentioned service from the platform (e.g. 'SDE-1 to SDE-2 Promotion & System Design Audit', 'College & Branch Reality Deep-Dive', 'JoSAA Choice Order Strategy Audit').
+1. Detect if the user is asking to book, request quotes, or schedule sessions with mentors (e.g., "book a request with arnav patel for SDE-1 to SDE-2 Promotion & System Design Audit for 350 rs", "yash agarwal for jossa councelling 300 rs", "request a quote of 300 rs with raj", "book video session with raj").
+   - IMPORTANT: Even if the explicit word "book" is omitted, mentioning a mentor alongside a price or topic (e.g. "yash agarwal for jossa councelling 300 rs") IS a booking intent.
+2. Match mentors robustly with aliases, typos, and surnames:
+   - 'yash agarwal' / 'yash agrawal' -> 'Yash Agrawal'
+   - 'arnav' / 'arnav patel' / 'aarav' -> 'Aarav Patel'
+   - 'raj' / 'raj sharma' / 'rajat' -> 'Rajat Verma (Raj)'
+   - 'kabir' -> 'Kabir Mehta', 'riya' -> 'Riya Sharma', 'sneha' -> 'Sneha Rao', 'vikram' -> 'Vikramaditya Sen'.
+   - COLLISION RULE: If a user specifies 'raj sharma', match ONLY Rajat Verma (Raj). Do NOT match Riya Sharma simply because the surname 'sharma' is present.
+3. Match any mentioned service from the platform (e.g. 'SDE-1 to SDE-2 Promotion & System Design Audit', 'College & Branch Reality Deep-Dive', 'JoSAA Choice Order Strategy & Mock Counselling').
 4. Extract any proposed offer/budget price mentioned (e.g. "350 rs", "for 350", "₹300", "quote of 300").
 5. CRITICAL RULE: If booking intent is present BUT no price is specified (either in this message or prior pending booking):
    - Set "isBookingIntent": true, "needsPriceSpecification": true.
