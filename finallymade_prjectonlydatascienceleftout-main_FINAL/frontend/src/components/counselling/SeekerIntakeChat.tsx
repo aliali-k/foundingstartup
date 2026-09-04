@@ -62,13 +62,17 @@ export function SeekerIntakeChat({
   const [profile, setProfile] = useState<SeekerStructuredProfile>({
     stage: "Class 12 / JEE Aspirant",
     exam: "JEE Main 2026",
-    rank: initialContext?.rank ? parseInt(initialContext.rank, 10) : 32450,
+    rank: initialContext?.rank ? parseInt(initialContext.rank, 10) : 7207,
     consideredColleges: initialContext?.college
-      ? [initialContext.college, "PEC / NIT Chandigarh", "IIT Kanpur"]
-      : ["NIT Kurukshetra", "PEC / NIT Chandigarh", "IIT Kanpur"],
-    preferredBranches: initialContext?.branch ? [initialContext.branch] : ["Mechanical Engineering"],
-    primaryPriorities: ["Core internships & placements", "Hostel culture"],
-    specificDoubts: ["Automotive recruiters on campus", "Branch change CGPA threshold", "IT placement eligibility"],
+      ? [initialContext.college, "PEC / NIT Chandigarh", "Assam University"]
+      : ["NIT Kurukshetra", "PEC / NIT Chandigarh", "Assam University"],
+    preferredBranches: initialContext?.branch ? [initialContext.branch] : ["Computer Science"],
+    primaryPriorities: ["Tier-1 software placements", "Hostel & campus coding culture"],
+    specificDoubts: [
+      "Tier-1 product & FinTech placement opportunities on campus",
+      "Hostel facilities, high-speed coding labs & internet reality",
+      "NIT Kurukshetra vs PEC vs Assam University CS curriculum comparison"
+    ],
   });
 
   const [messages, setMessages] = useState<IntakeMessage[]>([
@@ -440,7 +444,7 @@ export function SeekerIntakeChat({
             <div>
               <span className="text-muted-foreground block text-[10px] uppercase tracking-wider">Candidate & Rank</span>
               <span className="font-bold text-foreground">
-                {profile.stage} · #{profile.rank?.toLocaleString() || "32,450"} AIR ({profile.exam})
+                {profile.stage} · #{profile.rank?.toLocaleString() || "7,207"} AIR ({profile.exam})
               </span>
             </div>
 

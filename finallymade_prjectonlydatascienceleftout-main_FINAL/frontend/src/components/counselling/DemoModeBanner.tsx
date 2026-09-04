@@ -20,10 +20,10 @@ export function DemoModeBanner() {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={() => navigate({ to: "/counselling/college", search: { college: "NIT Kurukshetra", rank: "32450", branch: "Mechanical" } })}
+            onClick={() => navigate({ to: "/counselling/college", search: { college: "NIT Kurukshetra", rank: "7207", branch: "Computer Science" } })}
             className="px-2.5 py-1 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 transition shadow-2xs"
           >
-            1. College Flow (NITK Mech)
+            1. College Flow (CS @ NITK / PEC / Assam Univ)
           </button>
           <button
             onClick={() => navigate({ to: "/counselling/career" })}

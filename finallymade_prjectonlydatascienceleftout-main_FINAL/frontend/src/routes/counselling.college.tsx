@@ -35,13 +35,17 @@ function CollegeGuidancePage() {
   const [currentProfile, setCurrentProfile] = useState<SeekerStructuredProfile>({
     stage: "Class 12 / JEE Aspirant",
     exam: "JEE Main 2026",
-    rank: search.rank ? parseInt(search.rank, 10) : 32450,
+    rank: search.rank ? parseInt(search.rank, 10) : 7207,
     consideredColleges: search.college
-      ? [search.college, "PEC / NIT Chandigarh", "IIT Kanpur"]
-      : ["NIT Kurukshetra", "PEC / NIT Chandigarh", "IIT Kanpur"],
-    preferredBranches: search.branch ? [search.branch] : ["Mechanical Engineering"],
-    primaryPriorities: ["Core internships & placements", "Hostel culture"],
-    specificDoubts: ["Automotive recruiters on campus", "Branch change CGPA threshold", "IT placement eligibility"],
+      ? [search.college, "PEC / NIT Chandigarh", "Assam University"]
+      : ["NIT Kurukshetra", "PEC / NIT Chandigarh", "Assam University"],
+    preferredBranches: search.branch ? [search.branch] : ["Computer Science"],
+    primaryPriorities: ["Tier-1 software placements", "Hostel & campus coding culture"],
+    specificDoubts: [
+      "Tier-1 product & FinTech placement opportunities on campus",
+      "Hostel facilities, high-speed coding labs & internet reality",
+      "NIT Kurukshetra vs PEC vs Assam University CS curriculum comparison"
+    ],
   });
 
   const [refineModalOpen, setRefineModalOpen] = useState(false);

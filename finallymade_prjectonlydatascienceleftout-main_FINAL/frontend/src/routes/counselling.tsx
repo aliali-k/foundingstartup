@@ -31,8 +31,8 @@ function CounsellingHomePage() {
   const existingReport = getReport();
 
   const reportCollege = existingReport?.colleges?.[0]?.collegeName || (isNeet ? "AIIMS New Delhi" : "NIT Kurukshetra");
-  const reportRank = existingReport?.student?.categoryRank || (isNeet ? 1420 : 32450);
-  const reportBranch = existingReport?.colleges?.[0]?.programs?.[0]?.program || (isNeet ? "MBBS (Bachelor of Medicine & Surgery)" : "Mechanical Engineering");
+  const reportRank = existingReport?.student?.categoryRank || (isNeet ? 1420 : 7207);
+  const reportBranch = existingReport?.colleges?.[0]?.programs?.[0]?.program || (isNeet ? "MBBS (Bachelor of Medicine & Surgery)" : "Computer Science");
 
   return (
     <div className="min-h-screen bg-background text-foreground font-sans">

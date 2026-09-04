@@ -13,7 +13,7 @@ interface RefinedCollegeItem {
 export function CollegeRefineModal({
   isOpen,
   onClose,
-  initialColleges = ["NIT Kurukshetra", "PEC / NIT Chandigarh", "IIT Kanpur"],
+  initialColleges = ["NIT Kurukshetra", "PEC / NIT Chandigarh", "Assam University"],
   onSelectCollege,
 }: {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export function CollegeRefineModal({
 }) {
   const [collegesList, setCollegesList] = useState<string[]>(initialColleges);
   const [newCollegeInput, setNewCollegeInput] = useState("");
-  const [selectedPriority, setSelectedPriority] = useState("core engineering & placements");
+  const [selectedPriority, setSelectedPriority] = useState("computer science & tech placements");
   const [customPriority, setCustomPriority] = useState("");
   const [refinedResults, setRefinedResults] = useState<RefinedCollegeItem[] | null>(null);
   const [synthesis, setSynthesis] = useState<string | null>(null);

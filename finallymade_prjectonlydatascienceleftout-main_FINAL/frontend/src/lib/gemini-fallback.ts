@@ -401,8 +401,8 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
     }
 
     case "refine_colleges": {
-      const considered = payload.colleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh", "IIT Kanpur"];
-      const priority = payload.priority || "core internships and placements";
+      const considered = payload.colleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh", "Assam University"];
+      const priority = payload.priority || "computer science & tech placements";
 
       return {
         success: true,
@@ -411,27 +411,27 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
           recommendedOrder: [
             {
               collegeName: "NIT Kurukshetra",
-              fitScore: 94,
-              rationale: "Strongest dedicated core recruiters (Hero MotoCorp, Tata Motors, L&T) with active SAE Baja racing society for mechanical engineers.",
-              tradeOffs: "Slightly less urban campus compared to Chandigarh, but lower cost of living and deep North Indian PSU alumni base.",
-              questionsForSenior: "Do core companies open 2-month summer internships for mechanical students on campus?",
+              fitScore: 95,
+              rationale: "Top-tier on-campus tech recruiters (Microsoft, Amazon, FinTech) with active Technobyte coding society for CS engineers.",
+              tradeOffs: "Slightly less urban campus compared to Chandigarh, but lower cost of living and deep North Indian alumni network.",
+              questionsForSenior: "Do Tier-1 tech firms open on-campus internship and placement drives for CS students at NITK?",
             },
             {
               collegeName: "PEC / NIT Chandigarh",
-              fitScore: 88,
-              rationale: "Mandatory 6-month final year internship semester gives immense leverage to convert tech or core PPOs in Chandigarh/NCR.",
-              tradeOffs: "Hostel infrastructure is older, but city location offers unmatched quality of student life.",
-              questionsForSenior: "What percentage of students convert their 6-month semester internship into full-time offers?",
+              fitScore: 92,
+              rationale: "Mandatory 6-month final year internship semester gives immense leverage to convert high-ticket software PPOs in Chandigarh/NCR.",
+              tradeOffs: "Hostel infrastructure is older, but city location offers unmatched quality of tech exposure.",
+              questionsForSenior: "What percentage of CSE students convert their 6-month semester internship into full-time offers?",
             },
             {
-              collegeName: "IIT Kanpur",
-              fitScore: 82,
-              rationale: "Unrivaled academic flexibility and global alumni reputation, but requires top JEE Advanced rank.",
-              tradeOffs: "Extreme academic workload; only viable if qualified in JEE Advanced.",
-              questionsForSenior: "How easy is it to take double majors or minors alongside core branches?",
+              collegeName: "Assam University",
+              fitScore: 84,
+              rationale: "Central University GFTI status offering affordable tuition, peaceful campus environment, and solid foundational CSE curriculum.",
+              tradeOffs: "Fewer on-campus Tier-1 product recruiters, requiring proactive competitive coding and off-campus drive preparation.",
+              questionsForSenior: "How do CSE students prepare for off-campus Tier-1 tech placements from Silchar?",
             },
           ],
-          synthesis: `For ${priority}, NIT Kurukshetra offers the highest direct on-campus core automotive placement density, while PEC Chandigarh provides the structural advantage of a full 6-month internship semester.`,
+          synthesis: `For ${priority}, NIT Kurukshetra offers high direct on-campus tech recruitment, PEC Chandigarh provides the structural advantage of a full 6-month internship semester, and Assam University offers solid central university academics with lower fee structure.`,
         },
       };
     }
@@ -445,6 +445,7 @@ export function handleLocalTaskFallback(task: string, payload: any): GeminiTaskR
 
       if (q.includes("kurukshetra") || q.includes("nitk")) college = "NIT Kurukshetra";
       else if (q.includes("chandigarh") || q.includes("pec")) college = "PEC / NIT Chandigarh";
+      else if (q.includes("assam")) college = "Assam University";
       else if (q.includes("kanpur") || q.includes("iitk")) college = "IIT Kanpur";
       else if (q.includes("trichy") || q.includes("nitt")) college = "NIT Trichy";
       else if (q.includes("aiims")) college = "AIIMS New Delhi";

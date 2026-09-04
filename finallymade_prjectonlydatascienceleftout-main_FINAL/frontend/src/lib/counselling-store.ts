@@ -120,10 +120,10 @@ export function createAgentBookingRequest({
     rawText: "",
     normalizedSummary: "",
     context: {
-      consideredColleges: context.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh"],
-      preferredBranches: context.preferredBranches || ["Mechanical Engineering"],
+      consideredColleges: context.consideredColleges || ["NIT Kurukshetra", "PEC / NIT Chandigarh", "Assam University"],
+      preferredBranches: context.preferredBranches || ["Computer Science"],
       primaryConcerns: questions,
-      rank: context.rank || 32450,
+      rank: context.rank || 7207,
       exam: context.exam || "JEE Main 2026",
     },
     questions: questions.length > 0 ? questions : [

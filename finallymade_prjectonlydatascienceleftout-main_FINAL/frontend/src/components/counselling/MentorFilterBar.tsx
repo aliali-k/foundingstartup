@@ -50,9 +50,9 @@ export function MentorFilterBar({
   };
 
   const sampleQueries = [
-    "Mechanical mentors from NIT Kurukshetra",
+    "Computer Science mentors from NIT Kurukshetra",
     "SDE-2 and above under ₹600",
-    "Top rated mentors from IIT Kanpur",
+    "Top rated mentors from Assam University",
   ];
 
   return (
@@ -110,6 +110,7 @@ export function MentorFilterBar({
             <option value="ALL">All Colleges</option>
             <option value="NIT Kurukshetra">NIT Kurukshetra</option>
             <option value="PEC / NIT Chandigarh">PEC / NIT Chandigarh</option>
+            <option value="Assam University">Assam University</option>
             <option value="IIT Kanpur">IIT Kanpur</option>
             <option value="IIT BHU Varanasi">IIT BHU Varanasi</option>
             <option value="NIT Trichy">NIT Trichy</option>
