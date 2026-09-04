@@ -1,33 +1,27 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/connectivity")({
   head: () => ({
     meta: [
-      { title: "One-to-One Connectivity - JoSAA Predictor" },
-      { name: "description", content: "Connect personally with seniors and mentors for guidance tailored to you." },
+      { title: "One-to-One Connectivity · JoSAA Mentorship" },
+      { name: "description", content: "Connect personally with seniors and mentors for guidance tailored to your college and branch." },
     ],
   }),
-  component: ConnectivityPage,
+  component: ConnectivityRedirect,
 });
 
-function ConnectivityPage() {
+function ConnectivityRedirect() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate({ to: "/counselling" });
+  }, [navigate]);
+
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-      <a
-        href="http://localhost:8084"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          padding: "14px 28px",
-          borderRadius: "12px",
-          background: "#3b82f6",
-          color: "#fff",
-          fontWeight: 600,
-          textDecoration: "none",
-        }}
-      >
-        Find Your Mentor
-      </a>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 font-mono">
+      <span className="size-3 rounded-full bg-blue-500 animate-ping" />
+      <span className="text-xs text-muted-foreground">Redirecting to Counselling Marketplace…</span>
     </div>
   );
 }

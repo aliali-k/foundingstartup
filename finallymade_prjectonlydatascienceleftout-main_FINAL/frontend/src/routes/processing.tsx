@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { useExamMode } from "@/lib/exam-mode-context";
 import { PredictionProcessing } from "@/components/PredictionProcessing";
 import { NeetClinicalProcessing } from "@/components/NeetClinicalProcessing";
 import { BranchSolarSystem } from "@/components/BranchSolarSystem";
@@ -31,6 +32,7 @@ export const Route = createFileRoute("/processing")({
 
 function Processing() {
   const navigate = useNavigate();
+  const { isNeet } = useExamMode();
   const [report, setReportState] = useState<ParsedReport | null>(null);
   const [done, setDone] = useState(false);
   const [uploadBusy, setUploadBusy] = useState(false);
@@ -121,11 +123,29 @@ function Processing() {
       <div className="cosmic-scope min-h-screen bg-background text-foreground font-mono">
         <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur md:px-8">
           <div className="flex items-center gap-3">
-            <span className="size-3 rotate-45 bg-accent" />
-            <span className="text-xl font-black tracking-tight">JoSAA</span>
+            <span
+              className="size-3 rotate-45"
+              style={{ background: isNeet ? "#10b981" : "var(--accent)" }}
+            />
+            <span
+              className="text-xl font-black tracking-tight"
+              style={{ color: isNeet ? "#10b981" : "inherit" }}
+            >
+              {isNeet ? "NEET-UG" : "JoSAA"}
+            </span>
+            <span
+              className="mono text-[9px] px-2 py-0.5 rounded uppercase font-semibold"
+              style={{
+                background: isNeet ? "rgba(16,185,129,0.15)" : "rgba(79,70,229,0.12)",
+                color: isNeet ? "#10b981" : "var(--accent)",
+                border: `1px solid ${isNeet ? "rgba(16,185,129,0.3)" : "rgba(79,70,229,0.25)"}`,
+              }}
+            >
+              {isNeet ? "Medical Control Room" : "Engineering Control Room"}
+            </span>
           </div>
           <div className="hidden text-xs uppercase tracking-[0.45em] text-muted-foreground md:block">
-            Decoding your rank into possibilities
+            {isNeet ? "Clinical & Medical Admission Radar" : "Decoding your rank into possibilities"}
           </div>
           <ThemeSwitch />
         </header>
@@ -230,7 +250,7 @@ function Processing() {
     );
   }
 
-  const isNeetReport = report?.isNeet || report?.student?.examType?.toLowerCase().includes("neet");
+  const isNeetReport = isNeet || report?.isNeet || report?.student?.examType?.toLowerCase().includes("neet");
 
   return (
     <div className="relative">

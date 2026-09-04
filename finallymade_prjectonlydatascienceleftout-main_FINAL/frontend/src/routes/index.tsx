@@ -142,7 +142,7 @@ export function TwentyHomePage() {
             Get started free
           </button>
           <button
-            onClick={() => navigate({ to: "/predict" })}
+            onClick={() => navigate({ to: "/counselling" })}
             className="px-6 py-2.5 rounded-md font-medium text-sm border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition shadow-2xs cursor-pointer"
           >
             Talk to senior counsellors

@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.pdf
+
+# Node & Build artifacts
+node_modules/
+dist/
+dist-ssr/
+.output/
+.vinxi/
+.tanstack/
+.nitro/
+.wrangler/
+*.local
+
+# Environment & Credentials
+.env
+.env.*
+!.env.example
+
+# OS and Editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

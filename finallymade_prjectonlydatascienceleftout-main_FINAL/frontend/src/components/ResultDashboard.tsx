@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ThemeSwitch } from "./ThemeSwitch";
+import { useExamMode } from "@/lib/exam-mode-context";
 import { getReportPdf } from "@/lib/prediction-store";
 import type { ParsedReport } from "@/lib/parse-prediction-pdf";
 import { BRANCH_PLANETS } from "@/lib/branch-planets";
@@ -107,7 +108,7 @@ const JEE_NAV_TILES: Tile[] = [
     header: "One-to-One Connectivity",
     desc: "Connect personally with seniors and mentors for guidance tailored to your college and branch.",
     cta: "Find your mentor",
-    to: "http://localhost:8084",
+    to: "/counselling",
     glow: "#38bdf8",
     accent: "#38bdf8",
   },
@@ -160,7 +161,7 @@ const NEET_NAV_TILES: Tile[] = [
     header: "AIIMS & PGI Resident Network",
     desc: "Connect with Senior Resident doctors across AIIMS New Delhi, PGI, and KGMU for clinical guidance.",
     cta: "Connect with Doctors",
-    to: "http://localhost:8084",
+    to: "/counselling",
     glow: "#10b981",
     accent: "#10b981",
   },
@@ -257,7 +258,8 @@ export function ResultDashboard({
   parsedReport: ParsedReport;
   onReplay: () => void;
 }) {
-  const isNeet = parsedReport.isNeet || parsedReport.student?.examType?.toLowerCase().includes("neet");
+  const { isNeet: contextIsNeet } = useExamMode();
+  const isNeet = contextIsNeet || parsedReport.isNeet || parsedReport.student?.examType?.toLowerCase().includes("neet");
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -511,7 +513,7 @@ export function ResultDashboard({
               </p>
             </div>
             <div className="flex flex-wrap items-end justify-between gap-4">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {(topCollege?.programs ?? []).slice(0, 3).map((p, i) => (
                   <span
                     key={i}
@@ -521,6 +523,22 @@ export function ResultDashboard({
                     {p.program}
                   </span>
                 ))}
+                <Link
+                  to="/counselling/college"
+                  search={{
+                    college: topCollege?.collegeName || (isNeet ? "AIIMS New Delhi" : "NIT Kurukshetra"),
+                    rank: String(parsedReport.student?.categoryRank || ""),
+                    branch: topCollege?.programs?.[0]?.program || "",
+                  }}
+                  className="rounded-full px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-[0.12em] transition hover:opacity-90 ml-1"
+                  style={{
+                    background: isNeet ? "rgba(16,185,129,0.15)" : "rgba(59,130,246,0.15)",
+                    color: isNeet ? "#10b981" : "#3b82f6",
+                    border: `1px solid ${isNeet ? "rgba(16,185,129,0.4)" : "rgba(59,130,246,0.4)"}`,
+                  }}
+                >
+                  Ask a Senior →
+                </Link>
               </div>
 
               {/* Rank / Chance Badge */}
@@ -586,36 +604,6 @@ export function ResultDashboard({
               </button>
               {downloadError && (
                 <span className="text-[10px] text-destructive">{downloadError}</span>
-              )}
-            </div>
-          </TileShell>
-
-          {/* TILE 03 — Marks vs Rank Curve */}
-          <TileShell glow={isNeet ? "#10b981" : "#22d3a4"}>
-            <div>
-              <div
-                className="mono text-[10px] tracking-[0.22em] font-semibold"
-                style={{ color: isNeet ? "#10b981" : "#22d3a4" }}
-              >
-                03 · {isNeet ? "NEET MARKS → AIR CURVE" : "MARKS → RANK"}
-              </div>
-              <h2 className="mt-2 text-lg font-black tracking-tight">
-                {isNeet ? "NTA Calibrated Rank Curve" : "Marks vs Rank Predictor"}
-              </h2>
-              <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
-                {isNeet
-                  ? "See where your score sits across the 24 Lakh candidate density curve."
-                  : "See where your marks land on the JEE rank curve."}
-              </p>
-            </div>
-            <div className="flex items-end justify-between gap-3">
-              {isNeet ? (
-                <NeetMarksVsAirChart
-                  userMarks={parseFloat(parsedReport.student?.shift?.split(" ")[0] || "650")}
-                  userAir={parsedReport.student?.categoryRank}
-                />
-              ) : (
-                <MarksVsRankChart color="#22d3a4" />
               )}
             </div>
           </TileShell>
@@ -874,53 +862,62 @@ export function ResultDashboard({
           </section>
         )}
 
-        {/* NAV TILES — Medical / JoSAA specific */}
-        <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {navTiles.slice(0, 2).map((t) => (
-            <TileLink key={t.to} to={t.to!}>
-              <TileShell glow={t.glow}>
-                <div>
-                  <div className="mono text-[10px] tracking-[0.22em]" style={{ color: t.accent }}>
-                    {t.n} · SECTION
-                  </div>
-                  <h2 className="mt-2 text-lg font-black tracking-tight">{t.header}</h2>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
-                    {t.desc}
-                  </p>
-                </div>
-                <span
-                  className="text-[11px] font-bold uppercase tracking-[0.18em] transition group-hover:translate-x-0.5"
-                  style={{ color: t.accent }}
+        {/* UNIFIED 2x3 EXPLORATION & ACTION GRID (6 CARDS) */}
+        <div className="mt-10">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* CARD 01: Marks vs Rank Curve */}
+            <TileShell glow={isNeet ? "#10b981" : "#22d3a4"}>
+              <div>
+                <div
+                  className="mono text-[10px] tracking-[0.22em] font-semibold"
+                  style={{ color: isNeet ? "#10b981" : "#22d3a4" }}
                 >
-                  {t.cta} →
-                </span>
-              </TileShell>
-            </TileLink>
-          ))}
-        </div>
+                  01 · {isNeet ? "NEET MARKS → AIR CURVE" : "MARKS → RANK"}
+                </div>
+                <h2 className="mt-2 text-lg font-black tracking-tight">
+                  {isNeet ? "NTA Calibrated Rank Curve" : "Marks vs Rank Predictor"}
+                </h2>
+                <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                  {isNeet
+                    ? "See where your score sits across the 24 Lakh candidate density curve."
+                    : "See where your marks land on the JEE rank curve."}
+                </p>
+              </div>
+              <div className="flex items-end justify-between gap-3 pt-2">
+                {isNeet ? (
+                  <NeetMarksVsAirChart
+                    userMarks={parseFloat(parsedReport.student?.shift?.split(" ")[0] || "650")}
+                    userAir={parsedReport.student?.categoryRank}
+                  />
+                ) : (
+                  <MarksVsRankChart color="#22d3a4" />
+                )}
+              </div>
+            </TileShell>
 
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          {navTiles.slice(2).map((t) => (
-            <TileLink key={t.to} to={t.to!}>
-              <TileShell glow={t.glow}>
-                <div>
-                  <div className="mono text-[10px] tracking-[0.22em]" style={{ color: t.accent }}>
-                    {t.n} · SECTION
+            {/* CARDS 02-06: The 5 Navigation Modules */}
+            {navTiles.map((t) => (
+              <TileLink key={t.to} to={t.to!}>
+                <TileShell glow={t.glow}>
+                  <div>
+                    <div className="mono text-[10px] tracking-[0.22em]" style={{ color: t.accent }}>
+                      {t.n} · SECTION
+                    </div>
+                    <h2 className="mt-2 text-lg font-black tracking-tight">{t.header}</h2>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                      {t.desc}
+                    </p>
                   </div>
-                  <h2 className="mt-2 text-lg font-black tracking-tight">{t.header}</h2>
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
-                    {t.desc}
-                  </p>
-                </div>
-                <span
-                  className="text-[11px] font-bold uppercase tracking-[0.18em] transition group-hover:translate-x-0.5"
-                  style={{ color: t.accent }}
-                >
-                  {t.cta} →
-                </span>
-              </TileShell>
-            </TileLink>
-          ))}
+                  <span
+                    className="text-[11px] font-bold uppercase tracking-[0.18em] transition group-hover:translate-x-0.5"
+                    style={{ color: t.accent }}
+                  >
+                    {t.cta} →
+                  </span>
+                </TileShell>
+              </TileLink>
+            ))}
+          </div>
         </div>
 
         {/* Back and Replay Controls */}

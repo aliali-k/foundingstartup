@@ -13,11 +13,17 @@ import { Route as VerifyResultRouteImport } from './routes/verify-result'
 import { Route as ProcessingRouteImport } from './routes/processing'
 import { Route as PredictMotionRouteImport } from './routes/predict-motion'
 import { Route as PredictRouteImport } from './routes/predict'
+import { Route as HelperRouteImport } from './routes/helper'
 import { Route as GlobalPathwaysRouteImport } from './routes/global-pathways'
+import { Route as CounsellingRouteImport } from './routes/counselling'
 import { Route as ConnectivityRouteImport } from './routes/connectivity'
 import { Route as ClubsHackathonsRouteImport } from './routes/clubs-hackathons'
 import { Route as AlternatePathwayRouteImport } from './routes/alternate-pathway'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CounsellingCompareRouteImport } from './routes/counselling.compare'
+import { Route as CounsellingCollegeRouteImport } from './routes/counselling.college'
+import { Route as CounsellingCareerRouteImport } from './routes/counselling.career'
+import { Route as CounsellingSessionIdRouteImport } from './routes/counselling.session.$id'
 
 const VerifyResultRoute = VerifyResultRouteImport.update({
   id: '/verify-result',
@@ -39,9 +45,19 @@ const PredictRoute = PredictRouteImport.update({
   path: '/predict',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HelperRoute = HelperRouteImport.update({
+  id: '/helper',
+  path: '/helper',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GlobalPathwaysRoute = GlobalPathwaysRouteImport.update({
   id: '/global-pathways',
   path: '/global-pathways',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CounsellingRoute = CounsellingRouteImport.update({
+  id: '/counselling',
+  path: '/counselling',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectivityRoute = ConnectivityRouteImport.update({
@@ -64,28 +80,60 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CounsellingCompareRoute = CounsellingCompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => CounsellingRoute,
+} as any)
+const CounsellingCollegeRoute = CounsellingCollegeRouteImport.update({
+  id: '/college',
+  path: '/college',
+  getParentRoute: () => CounsellingRoute,
+} as any)
+const CounsellingCareerRoute = CounsellingCareerRouteImport.update({
+  id: '/career',
+  path: '/career',
+  getParentRoute: () => CounsellingRoute,
+} as any)
+const CounsellingSessionIdRoute = CounsellingSessionIdRouteImport.update({
+  id: '/session/$id',
+  path: '/session/$id',
+  getParentRoute: () => CounsellingRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alternate-pathway': typeof AlternatePathwayRoute
   '/clubs-hackathons': typeof ClubsHackathonsRoute
   '/connectivity': typeof ConnectivityRoute
+  '/counselling': typeof CounsellingRouteWithChildren
   '/global-pathways': typeof GlobalPathwaysRoute
+  '/helper': typeof HelperRoute
   '/predict': typeof PredictRoute
   '/predict-motion': typeof PredictMotionRoute
   '/processing': typeof ProcessingRoute
   '/verify-result': typeof VerifyResultRoute
+  '/counselling/career': typeof CounsellingCareerRoute
+  '/counselling/college': typeof CounsellingCollegeRoute
+  '/counselling/compare': typeof CounsellingCompareRoute
+  '/counselling/session/$id': typeof CounsellingSessionIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alternate-pathway': typeof AlternatePathwayRoute
   '/clubs-hackathons': typeof ClubsHackathonsRoute
   '/connectivity': typeof ConnectivityRoute
+  '/counselling': typeof CounsellingRouteWithChildren
   '/global-pathways': typeof GlobalPathwaysRoute
+  '/helper': typeof HelperRoute
   '/predict': typeof PredictRoute
   '/predict-motion': typeof PredictMotionRoute
   '/processing': typeof ProcessingRoute
   '/verify-result': typeof VerifyResultRoute
+  '/counselling/career': typeof CounsellingCareerRoute
+  '/counselling/college': typeof CounsellingCollegeRoute
+  '/counselling/compare': typeof CounsellingCompareRoute
+  '/counselling/session/$id': typeof CounsellingSessionIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -93,11 +141,17 @@ export interface FileRoutesById {
   '/alternate-pathway': typeof AlternatePathwayRoute
   '/clubs-hackathons': typeof ClubsHackathonsRoute
   '/connectivity': typeof ConnectivityRoute
+  '/counselling': typeof CounsellingRouteWithChildren
   '/global-pathways': typeof GlobalPathwaysRoute
+  '/helper': typeof HelperRoute
   '/predict': typeof PredictRoute
   '/predict-motion': typeof PredictMotionRoute
   '/processing': typeof ProcessingRoute
   '/verify-result': typeof VerifyResultRoute
+  '/counselling/career': typeof CounsellingCareerRoute
+  '/counselling/college': typeof CounsellingCollegeRoute
+  '/counselling/compare': typeof CounsellingCompareRoute
+  '/counselling/session/$id': typeof CounsellingSessionIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -106,33 +160,51 @@ export interface FileRouteTypes {
     | '/alternate-pathway'
     | '/clubs-hackathons'
     | '/connectivity'
+    | '/counselling'
     | '/global-pathways'
+    | '/helper'
     | '/predict'
     | '/predict-motion'
     | '/processing'
     | '/verify-result'
+    | '/counselling/career'
+    | '/counselling/college'
+    | '/counselling/compare'
+    | '/counselling/session/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/alternate-pathway'
     | '/clubs-hackathons'
     | '/connectivity'
+    | '/counselling'
     | '/global-pathways'
+    | '/helper'
     | '/predict'
     | '/predict-motion'
     | '/processing'
     | '/verify-result'
+    | '/counselling/career'
+    | '/counselling/college'
+    | '/counselling/compare'
+    | '/counselling/session/$id'
   id:
     | '__root__'
     | '/'
     | '/alternate-pathway'
     | '/clubs-hackathons'
     | '/connectivity'
+    | '/counselling'
     | '/global-pathways'
+    | '/helper'
     | '/predict'
     | '/predict-motion'
     | '/processing'
     | '/verify-result'
+    | '/counselling/career'
+    | '/counselling/college'
+    | '/counselling/compare'
+    | '/counselling/session/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -140,7 +212,9 @@ export interface RootRouteChildren {
   AlternatePathwayRoute: typeof AlternatePathwayRoute
   ClubsHackathonsRoute: typeof ClubsHackathonsRoute
   ConnectivityRoute: typeof ConnectivityRoute
+  CounsellingRoute: typeof CounsellingRouteWithChildren
   GlobalPathwaysRoute: typeof GlobalPathwaysRoute
+  HelperRoute: typeof HelperRoute
   PredictRoute: typeof PredictRoute
   PredictMotionRoute: typeof PredictMotionRoute
   ProcessingRoute: typeof ProcessingRoute
@@ -177,11 +251,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PredictRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/helper': {
+      id: '/helper'
+      path: '/helper'
+      fullPath: '/helper'
+      preLoaderRoute: typeof HelperRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/global-pathways': {
       id: '/global-pathways'
       path: '/global-pathways'
       fullPath: '/global-pathways'
       preLoaderRoute: typeof GlobalPathwaysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/counselling': {
+      id: '/counselling'
+      path: '/counselling'
+      fullPath: '/counselling'
+      preLoaderRoute: typeof CounsellingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connectivity': {
@@ -212,15 +300,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/counselling/compare': {
+      id: '/counselling/compare'
+      path: '/compare'
+      fullPath: '/counselling/compare'
+      preLoaderRoute: typeof CounsellingCompareRouteImport
+      parentRoute: typeof CounsellingRoute
+    }
+    '/counselling/college': {
+      id: '/counselling/college'
+      path: '/college'
+      fullPath: '/counselling/college'
+      preLoaderRoute: typeof CounsellingCollegeRouteImport
+      parentRoute: typeof CounsellingRoute
+    }
+    '/counselling/career': {
+      id: '/counselling/career'
+      path: '/career'
+      fullPath: '/counselling/career'
+      preLoaderRoute: typeof CounsellingCareerRouteImport
+      parentRoute: typeof CounsellingRoute
+    }
+    '/counselling/session/$id': {
+      id: '/counselling/session/$id'
+      path: '/session/$id'
+      fullPath: '/counselling/session/$id'
+      preLoaderRoute: typeof CounsellingSessionIdRouteImport
+      parentRoute: typeof CounsellingRoute
+    }
   }
 }
+
+interface CounsellingRouteChildren {
+  CounsellingCareerRoute: typeof CounsellingCareerRoute
+  CounsellingCollegeRoute: typeof CounsellingCollegeRoute
+  CounsellingCompareRoute: typeof CounsellingCompareRoute
+  CounsellingSessionIdRoute: typeof CounsellingSessionIdRoute
+}
+
+const CounsellingRouteChildren: CounsellingRouteChildren = {
+  CounsellingCareerRoute: CounsellingCareerRoute,
+  CounsellingCollegeRoute: CounsellingCollegeRoute,
+  CounsellingCompareRoute: CounsellingCompareRoute,
+  CounsellingSessionIdRoute: CounsellingSessionIdRoute,
+}
+
+const CounsellingRouteWithChildren = CounsellingRoute._addFileChildren(
+  CounsellingRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlternatePathwayRoute: AlternatePathwayRoute,
   ClubsHackathonsRoute: ClubsHackathonsRoute,
   ConnectivityRoute: ConnectivityRoute,
+  CounsellingRoute: CounsellingRouteWithChildren,
   GlobalPathwaysRoute: GlobalPathwaysRoute,
+  HelperRoute: HelperRoute,
   PredictRoute: PredictRoute,
   PredictMotionRoute: PredictMotionRoute,
   ProcessingRoute: ProcessingRoute,
