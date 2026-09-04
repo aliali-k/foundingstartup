@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { JEE_MAIN_SHIFTS } from "@/lib/jee-main-shifts";
-import { setPendingPredictPayload, clearReport } from "@/lib/prediction-store";
+import { setPendingPredictPayload, setReport, clearReport } from "@/lib/prediction-store";
+import { useExamMode } from "@/lib/exam-mode-context";
+import { useTheme } from "./theme-provider";
+import { predictNeetColleges, marksToEstimatedNeetRank } from "@/lib/neet-mock-data";
+import type { ParsedReport } from "@/lib/parse-prediction-pdf";
 
-
-type ExamType = "jee main" | "jee advanced" | null;
+type JeeExamType = "jee main" | "jee advanced" | null;
 type Gender = "GENDER NEUTRAL" | "FEMALE" | null;
+type NeetCourse = "MBBS" | "BDS" | "BAMS";
 
 const CATEGORIES = [
   "OPEN",
@@ -24,181 +28,150 @@ const STATES = [
   "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chandigarh","Chhattisgarh","Delhi","Goa","Gujarat","Haryana","Himachal Pradesh","Jammu and Kashmir","Jharkhand","Karnataka","Kerala","Ladakh","Lakshadweep","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Puducherry","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Daman and Diu","Dadra and Nagar Haveli",
 ];
 
-const YEARS = [2026, 2025, 2024, 2023, 2022, 2021, 2020];
+const YEARS = [2026, 2025, 2024, 2023, 2022];
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-const labelStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: 10,
-  letterSpacing: "1.5px",
-  textTransform: "uppercase",
-  color: "var(--muted-foreground)",
-  marginBottom: 6,
-  display: "block",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "var(--card)",
-  border: "1px solid var(--border-strong)",
-  color: "var(--foreground)",
-  padding: "10px 12px",
-  fontSize: 14,
-  fontFamily: "var(--font-sans)",
-  borderRadius: 4,
-  outline: "none",
-};
-
-const monoNote: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: 10,
-  letterSpacing: "0.5px",
-  color: "var(--muted-foreground)",
-  marginTop: 8,
-};
-
-const errorStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: 10,
-  letterSpacing: "0.5px",
-  color: "#ef4444",
-  marginTop: 6,
-};
-
 export function PredictionModal({ open, onClose }: Props) {
   const navigate = useNavigate();
+  const { isNeet } = useExamMode();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const [step, setStep] = useState(1);
   const [fading, setFading] = useState(false);
 
-  // Step 1
-  const [examType, setExamType] = useState<ExamType>(null);
+  // Common Candidate Info
   const [name, setName] = useState("");
   const [year, setYear] = useState<number>(2026);
-
-  // Step 2
-  const [shiftSession, setShiftSession] = useState("");
-  const [shiftDate, setShiftDate] = useState("");
-  const [shift, setShift] = useState("");
-  const [percentile, setPercentile] = useState("");
-  const [marks, setMarks] = useState("");
-  const [crl, setCrl] = useState("");
-  const [resultOut, setResultOut] = useState<boolean | null>(null);
-  const [catRanks, setCatRanks] = useState<{ cat: string; rank: string }[]>([]);
-  const [catDraft, setCatDraft] = useState("");
-  const [catDraftRank, setCatDraftRank] = useState("");
-  const [catOnly, setCatOnly] = useState("");
   const [gender, setGender] = useState<Gender>(null);
-
-
-  // Step 3
   const [state, setState] = useState("");
   const [stateQuery, setStateQuery] = useState("");
   const [stateOpen, setStateOpen] = useState(false);
-
+  const [category, setCategory] = useState("OPEN");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Result Out Question
+  const [resultOut, setResultOut] = useState<boolean | null>(null);
+
+  // NEET Specific Fields
+  const [neetCourse, setNeetCourse] = useState<NeetCourse>("MBBS");
+  const [neetMarks, setNeetMarks] = useState("");
+  const [neetAir, setNeetAir] = useState("");
+  const [neetPercentile, setNeetPercentile] = useState("");
+  const [neetCatRank, setNeetCatRank] = useState("");
+
+  // JEE Specific Fields
+  const [jeeExamType, setJeeExamType] = useState<JeeExamType>("jee main");
+  const [shiftSession, setShiftSession] = useState("");
+  const [shiftDate, setShiftDate] = useState("");
+  const [shift, setShift] = useState("");
+  const [jeePercentile, setJeePercentile] = useState("");
+  const [jeeMarks, setJeeMarks] = useState("");
+  const [jeeCrl, setJeeCrl] = useState("");
 
   const reset = () => {
     setStep(1);
-    setExamType(null);
     setName("");
     setYear(2026);
-    setShiftSession(""); setShiftDate(""); setShift("");
-    setPercentile(""); setMarks(""); setCrl("");
-
-    setResultOut(null);
-    setCatRanks([]); setCatDraft(""); setCatDraftRank(""); setCatOnly("");
     setGender(null);
     setState(""); setStateQuery(""); setStateOpen(false);
+    setCategory("OPEN");
+    setResultOut(null);
     setErrors({});
+
+    setNeetCourse("MBBS");
+    setNeetMarks(""); setNeetAir(""); setNeetPercentile(""); setNeetCatRank("");
+
+    setJeeExamType("jee main");
+    setShiftSession(""); setShiftDate(""); setShift("");
+    setJeePercentile(""); setJeeMarks(""); setJeeCrl("");
   };
 
   const close = () => { reset(); onClose(); };
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    const onKey = (e: KeyboardEvent) => { 
+      if (e.key === "Escape") close(); 
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Reset shift selection when year or exam type changes
-  useEffect(() => {
-    setShiftSession(""); setShiftDate(""); setShift("");
-  }, [year, examType]);
-
-  // Derived shift options
-  const yearShifts = examType === "jee main" ? JEE_MAIN_SHIFTS[year] : undefined;
+  const yearShifts = jeeExamType === "jee main" ? JEE_MAIN_SHIFTS[year] : undefined;
   const sessionOptions = yearShifts ? Object.keys(yearShifts) : [];
   const dateOptions = yearShifts && shiftSession && yearShifts[shiftSession]
     ? Object.keys(yearShifts[shiftSession]) : [];
   const shiftOptions = yearShifts && shiftSession && shiftDate && yearShifts[shiftSession]?.[shiftDate]
     ? yearShifts[shiftSession][shiftDate] : [];
 
-
-
-  if (!open) return null;
-
   const goStep = (n: number) => {
     setFading(true);
-    setTimeout(() => { setStep(n); setFading(false); }, 150);
+    setTimeout(() => { setStep(n); setFading(false); }, 140);
   };
 
-  // Step 1 validation & next-enabled
-  const step1Valid = !!examType && name.trim().length > 0;
+  const filteredStates = STATES.filter((s) =>
+    s.toLowerCase().includes(stateQuery.toLowerCase())
+  );
 
+  const resolvedState = state || STATES.find((s) => s.toLowerCase() === stateQuery.trim().toLowerCase()) || "";
+
+  // Step 1 Validation
   const validateStep1 = () => {
     const e: Record<string, string> = {};
-    if (!examType) e.examType = "Please select an exam type";
-    if (!name.trim()) e.name = "Please enter your name";
+    if (!name.trim()) e.name = "Please enter candidate full name";
+    if (!isNeet && !jeeExamType) e.jeeExamType = "Please select JEE examination stream";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const anyScore = percentile || marks || crl;
-  const step2HasScore = !!anyScore;
-
-  const commitDraftCatRank = () => {
-    if (catDraft && catDraftRank && !catRanks.some((c) => c.cat === catDraft)) {
-      const next = [...catRanks, { cat: catDraft, rank: catDraftRank }];
-      setCatRanks(next);
-      setCatDraft("");
-      setCatDraftRank("");
-      return next;
-    }
-    return catRanks;
-  };
-
+  // Step 2 Validation
   const validateStep2 = () => {
     const e: Record<string, string> = {};
-    if (!step2HasScore) e.scores = "Please fill at least one score field to continue";
-    if (percentile) {
-      const v = parseFloat(percentile);
-      if (isNaN(v) || v < 0 || v > 100) e.percentile = "Percentile must be 0–100";
+    if (resultOut === null) {
+      e.resultOut = isNeet
+        ? "Please select if official NTA NEET result is declared"
+        : "Please select if official NTA JEE result is declared";
     }
-    if (marks) {
-      const v = parseFloat(marks);
-      const max = examType === "jee main" ? 300 : 360;
-      if (isNaN(v) || v < 0 || v > max) e.marks = `Marks must be 0–${max}`;
+
+    if (isNeet) {
+      if (resultOut === true) {
+        if (!neetAir && !neetMarks) e.neetScores = "Please enter either All India Rank (AIR) or Total Marks";
+      } else if (resultOut === false) {
+        if (!neetMarks) e.neetMarks = "Please enter your expected NEET score (out of 720)";
+      }
+
+      if (neetMarks) {
+        const v = parseFloat(neetMarks);
+        if (isNaN(v) || v < 0 || v > 720) e.neetMarks = "Score must be between 0 and 720";
+      }
+      if (!gender) e.gender = "Please select candidate gender";
+    } else {
+      if (resultOut === true) {
+        if (!jeeCrl && !jeePercentile) e.scores = "Please enter your CRL Rank or NTA Percentile";
+      } else if (resultOut === false) {
+        if (!jeeMarks) e.scores = "Please enter your expected raw score";
+      } else {
+        const anyScore = jeePercentile || jeeMarks || jeeCrl;
+        if (!anyScore) e.scores = "Please fill at least one score field";
+      }
+      if (!gender) e.gender = "Please select a gender";
     }
-    if (crl) {
-      if (!/^\d+$/.test(crl)) e.crl = "CRL must be a whole number";
-    }
-    if (!gender) e.gender = "Please select a gender";
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const needsState = examType === "jee main";
-  const resolvedState = state || STATES.find((s) => s.toLowerCase() === stateQuery.trim().toLowerCase()) || "";
+  // Step 3 Validation
   const validateStep3 = () => {
     const e: Record<string, string> = {};
-    if (needsState && !resolvedState) {
-      e.state = "Please select a state";
+    if (!resolvedState) {
+      e.state = isNeet
+        ? "Please select Domicile State (Required for 85% State Quota counselling)"
+        : "Please select State of Education / Domicile";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -206,534 +179,763 @@ export function PredictionModal({ open, onClose }: Props) {
 
   const onNext = () => {
     if (step === 1 && validateStep1()) goStep(2);
-    else if (step === 2) {
-      commitDraftCatRank();
-      if (validateStep2()) goStep(3);
+    else if (step === 2 && validateStep2()) goStep(3);
+  };
+
+  const onPredict = () => {
+    if (!validateStep3()) return;
+
+    if (isNeet) {
+      const numMarks = neetMarks ? parseFloat(neetMarks) : null;
+      const numAir = neetAir ? parseInt(neetAir, 10) : (numMarks ? marksToEstimatedNeetRank(numMarks) : 2500);
+
+      const neetMatches = predictNeetColleges({
+        name: name.trim() || "Doctor Aspirant",
+        year,
+        marks: numMarks,
+        air: numAir,
+        percentile: neetPercentile ? parseFloat(neetPercentile) : 99.2,
+        category: category.replace(" (PwD)", "") as any,
+        domicileState: resolvedState,
+        coursePreference: neetCourse,
+      });
+
+      const parsedReport: ParsedReport = {
+        student: {
+          name: name.trim() || "Candidate",
+          examType: "NEET UG",
+          yearOfData: String(year),
+          percentile: neetPercentile ? parseFloat(neetPercentile) : 99.2,
+          category,
+          categoryRank: numAir,
+          session: "MCC AIQ & State Quota",
+          shift: `${neetMarks || "720"} Marks / 720`,
+        },
+        colleges: neetMatches.map((m) => ({
+          collegeName: m.college.name,
+          website: m.college.website,
+          programs: [
+            {
+              program: `${m.matchedProgram.course} (${m.matchedProgram.quota})`,
+              category,
+              quota: m.matchedProgram.quota,
+              genderPool: gender === "FEMALE" ? "Female Only" : "Gender Neutral",
+              openingRank: m.matchedProgram.openingRank,
+              closingRank: m.closingRank,
+              yourRank: m.userRank,
+              chancePercent: m.chancePercent,
+              chanceLabel: m.chanceTier,
+            },
+          ],
+        })),
+        isNeet: true,
+        neetResults: neetMatches,
+      };
+
+      clearReport();
+      setReport(parsedReport);
+      close();
+      navigate({ to: "/processing" });
+      return;
     }
-  };
 
-const onPredict = async () => {
-  if (!validateStep3()) return;
-  const finalCatRanks = commitDraftCatRank();
-  const hasAnyRank = !!crl || finalCatRanks.length > 0;
-  const effectiveResultOut = resultOut === null ? (hasAnyRank ? true : null) : resultOut;
-  const data = {
-    exam_type: examType,
-    name: name.trim(),
-    year,
-    exam_shift: examType === "jee main" && shiftSession && shiftDate && shift
-      ? { session: shiftSession, date: shiftDate, shift }
-      : null,
-    percentile: percentile ? parseFloat(percentile) : null,
-    marks: marks ? parseFloat(marks) : null,
-    crl_rank: crl ? parseInt(crl, 10) : null,
-    result_out: effectiveResultOut,
-    category_and_rank: effectiveResultOut
-      ? Object.fromEntries(finalCatRanks.map((c) => [c.cat, parseInt(c.rank, 10)]))
-      : null,
-    category_only: effectiveResultOut === false ? catOnly : null,
-    gender,
-    state: needsState ? resolvedState : null,
-  };
+    // Pure JEE flow
+    const data = {
+      exam_type: jeeExamType,
+      name: name.trim(),
+      year,
+      exam_shift: jeeExamType === "jee main" && shiftSession && shiftDate && shift
+        ? { session: shiftSession, date: shiftDate, shift }
+        : null,
+      percentile: jeePercentile ? parseFloat(jeePercentile) : null,
+      marks: jeeMarks ? parseFloat(jeeMarks) : null,
+      crl_rank: jeeCrl ? parseInt(jeeCrl, 10) : null,
+      result_out: resultOut,
+      category_and_rank: { [category]: jeeCrl ? parseInt(jeeCrl, 10) : 12000 },
+      category_only: category,
+      gender,
+      state: resolvedState,
+    };
 
-    // We navigate to /processing immediately (so the solar system shows
-    // instantly), and processing.tsx makes the actual /predict call itself.
     clearReport();
     setPendingPredictPayload(data);
     close();
     navigate({ to: "/processing" });
   };
 
-  const addCatRank = () => {
-    if (!catDraft || !catDraftRank) return;
-    if (catRanks.some((c) => c.cat === catDraft)) return;
-    setCatRanks([...catRanks, { cat: catDraft, rank: catDraftRank }]);
-    setCatDraft(""); setCatDraftRank("");
-  };
+  const estimatedNeetRank = neetMarks ? marksToEstimatedNeetRank(parseFloat(neetMarks)) : null;
 
-  const chooseResultOut = (value: boolean) => {
-    setResultOut(value);
-    setCatRanks([]);
-    setCatDraft("");
-    setCatDraftRank("");
-    setCatOnly("");
-  };
+  if (!open) return null;
 
-  const filteredStates = STATES.filter((s) =>
-    s.toLowerCase().includes(stateQuery.toLowerCase())
-  );
-
-  const nextDisabled =
-    (step === 1 && !step1Valid) ||
-    (step === 2 && (!step2HasScore || !gender));
+  const accentColor = isNeet ? "#10b981" : "#3b82f6";
+  const accentGlow = isNeet ? "rgba(16,185,129,0.2)" : "rgba(59,130,246,0.2)";
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
       style={{
-        position: "fixed", inset: 0, zIndex: 100,
-        background: "rgba(0,0,0,0.55)",
-        backdropFilter: "blur(8px)",
-        WebkitBackdropFilter: "blur(8px)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 16, animation: "fade-in 0.2s ease-out",
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: isDark ? "rgba(4, 6, 12, 0.85)" : "rgba(15, 23, 42, 0.5)",
+        backdropFilter: "blur(24px) saturate(190%)",
+        WebkitBackdropFilter: "blur(24px) saturate(190%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+        animation: "fade-in 0.2s ease-out",
       }}
       onClick={close}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="prediction-modal"
+        className="w-full max-w-[680px] max-h-[92vh] rounded-3xl border border-neutral-200 dark:border-white/12 bg-white/95 dark:bg-[#0c0e14]/95 text-neutral-900 dark:text-neutral-100 shadow-[0_30px_100px_rgba(0,0,0,0.5)] dark:shadow-[0_35px_120px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden relative"
         style={{
-          width: "100%", maxWidth: 580, maxHeight: "85vh",
-          background: "var(--card)",
-          border: "1px solid var(--border-strong)",
-          borderRadius: 8,
-          overflow: "hidden",
-          display: "flex", flexDirection: "column",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-          animation: "scale-in 0.2s ease-out",
+          animation: "scale-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        {/* Header */}
+        {/* Modal Top Subtle Light Rim */}
         <div
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "16px 20px",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "2px", color: "var(--muted-foreground)" }}>
-            STEP {step} / 3
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, justifyContent: "center", maxWidth: 200 }}>
-            {[1, 2, 3].map((n, i) => (
-              <div key={n} style={{ display: "flex", alignItems: "center", flex: i < 2 ? 1 : "0 0 auto" }}>
-                <div style={{
-                  width: 10, height: 10, borderRadius: "50%",
-                  background: step >= n ? "var(--accent)" : "transparent",
-                  border: `1.5px solid ${step >= n ? "var(--accent)" : "var(--border-strong)"}`,
-                  transition: "all 0.2s",
-                }} />
-                {i < 2 && (
-                  <div style={{
-                    flex: 1, height: 1, margin: "0 6px",
-                    background: step > n ? "var(--accent)" : "var(--border-strong)",
-                  }} />
-                )}
+          aria-hidden
+          className="pointer-events-none absolute -top-24 left-1/2 -translate-x-1/2 w-80 h-24 rounded-full blur-2xl opacity-40 dark:opacity-30"
+          style={{ background: accentColor }}
+        />
+
+        {/* ─── MODAL HEADER ─── */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-neutral-200 dark:border-white/10 bg-neutral-50/60 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div
+              className="size-9 rounded-xl flex items-center justify-center text-lg border shadow-2xs"
+              style={{
+                borderColor: `${accentColor}40`,
+                background: `${accentColor}15`,
+                color: accentColor,
+              }}
+            >
+              {isNeet ? "🩺" : "⚛"}
+            </div>
+            <div>
+              <div className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: accentColor }}>
+                {isNeet ? "MCC NEET-UG 2026 ADMISSION ENGINE" : "JoSAA 2026 JEE ADMISSION ENGINE"}
               </div>
-            ))}
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-neutral-950 dark:text-white">
+                Candidate Prediction Dossier
+              </h3>
+            </div>
           </div>
+
+          {/* Clean Segmented Step Indicator */}
+          <div className="hidden sm:flex items-center gap-1 font-mono text-[10.5px]">
+            {[
+              { num: 1, label: "Profile" },
+              { num: 2, label: "Scores" },
+              { num: 3, label: "Matrix" },
+            ].map((st) => {
+              const active = step >= st.num;
+              const isCurrent = step === st.num;
+              return (
+                <span
+                  key={st.num}
+                  className={`px-2.5 py-1 rounded-md transition-colors ${
+                    isCurrent
+                      ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 font-bold shadow-2xs"
+                      : active
+                      ? "text-neutral-800 dark:text-neutral-200 font-semibold bg-neutral-200/50 dark:bg-white/10"
+                      : "text-neutral-400 dark:text-neutral-600"
+                  }`}
+                >
+                  0{st.num} {st.label}
+                </span>
+              );
+            })}
+          </div>
+
           <button
             onClick={close}
-            aria-label="Close"
-            style={{
-              background: "transparent", border: "none", cursor: "pointer",
-              color: "var(--muted-foreground)", fontSize: 18, lineHeight: 1,
-              padding: 4,
-            }}
-          >✕</button>
+            aria-label="Close modal"
+            className="size-8 rounded-full border border-neutral-200 dark:border-white/10 bg-transparent hover:bg-neutral-200/60 dark:hover:bg-white/10 flex items-center justify-center text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition cursor-pointer"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Body */}
+        {/* ─── MODAL BODY (STEPPED) ─── */}
         <div
+          className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-6"
           style={{
-            padding: 24, overflowY: "auto", flex: 1,
             opacity: fading ? 0 : 1,
-            transform: fading ? "translateY(8px)" : "translateY(0)",
-            transition: "opacity 0.15s ease, transform 0.15s ease",
+            transform: fading ? "translateY(6px)" : "translateY(0)",
+            transition: "opacity 0.14s ease, transform 0.14s ease",
           }}
         >
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* STEP 1: CANDIDATE INFO & TARGET PROGRAM */}
+          {/* ═══════════════════════════════════════════════════════════ */}
           {step === 1 && (
             <>
-              <h2 style={{ fontFamily: "var(--font-mono)", fontSize: 14, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 18, color: "var(--foreground)" }}>
-                ◆ WHO ARE YOU?
-              </h2>
+              {isNeet ? (
+                /* PURE NEET STEP 1 */
+                <div className="space-y-5">
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Select Target Medical Discipline
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { id: "MBBS" as NeetCourse, title: "MBBS", sub: "Allopathy & Surgery (5.5 Yrs)" },
+                        { id: "BDS" as NeetCourse, title: "BDS", sub: "Dental Surgery (5 Yrs)" },
+                        { id: "BAMS" as NeetCourse, title: "BAMS", sub: "Ayurvedic Medicine (5.5 Yrs)" },
+                      ].map((crs) => {
+                        const active = neetCourse === crs.id;
+                        return (
+                          <button
+                            key={crs.id}
+                            type="button"
+                            onClick={() => setNeetCourse(crs.id)}
+                            className={`p-3.5 rounded-xl border text-center transition-all cursor-pointer ${
+                              active
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            <div className="font-mono text-sm font-bold">{crs.title}</div>
+                            <div className="font-mono text-[9px] text-neutral-500 dark:text-neutral-400 mt-1 leading-tight">
+                              {crs.sub}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-              <label style={labelStyle}>Exam Type</label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 4 }}>
-                {([
-                  { v: "jee main" as ExamType, title: "JEE MAIN", sub: "NITs · IIITs · GFTIs" },
-                  { v: "jee advanced" as ExamType, title: "JEE ADVANCED", sub: "IITs" },
-                ]).map((c) => {
-                  const active = examType === c.v;
-                  return (
-                    <button
-                      key={c.title}
-                      onClick={() => setExamType(c.v)}
-                      style={{
-                        padding: "16px 12px", textAlign: "center", cursor: "pointer",
-                        background: active ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "var(--card)",
-                        border: `1.5px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
-                        boxShadow: active ? "0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)" : "none",
-                        borderRadius: 6, transition: "all 0.18s",
-                        color: "var(--foreground)",
-                      }}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Candidate Full Name
+                    </label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Aryan Sharma"
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm font-medium transition"
+                      maxLength={100}
+                    />
+                    {errors.name && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.name}</div>}
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Admission Academic Cycle
+                    </label>
+                    <select
+                      value={year}
+                      onChange={(e) => setYear(parseInt(e.target.value, 10))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:border-emerald-500 transition"
                     >
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, letterSpacing: "1.5px", fontWeight: 600 }}>{c.title}</div>
-                      <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "1px", color: "var(--muted-foreground)", marginTop: 6 }}>{c.sub}</div>
-                    </button>
-                  );
-                })}
-              </div>
-              {errors.examType && <div style={errorStyle}>{errors.examType}</div>}
-
-              <div style={{ marginTop: 18 }}>
-                <label style={labelStyle}>Name</label>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your full name..."
-                  style={inputStyle}
-                  maxLength={100}
-                />
-                {errors.name && <div style={errorStyle}>{errors.name}</div>}
-              </div>
-
-              <div style={{ marginTop: 18 }}>
-                <label style={labelStyle}>Counselling Year</label>
-                <select
-                  value={year}
-                  onChange={(e) => setYear(parseInt(e.target.value, 10))}
-                  style={inputStyle}
-                >
-                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              <h2 style={{ fontFamily: "var(--font-mono)", fontSize: 14, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 18, color: "var(--foreground)" }}>
-                ◆ YOUR SCORE & DETAILS
-              </h2>
-
-              {examType === "jee main" ? (
-                <div style={{ display: "grid", gap: 12 }}>
-                  <div style={{
-                    display: "grid", gap: 10, padding: 12,
-                    border: "1px dashed var(--border-strong)", borderRadius: 6,
-                  }}>
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "1.5px", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
-                      Exam Shift ({year})
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Session</label>
-                      <select
-                        value={shiftSession}
-                        onChange={(e) => { setShiftSession(e.target.value); setShiftDate(""); setShift(""); }}
-                        style={inputStyle}
-                      >
-                        <option value="">Select session</option>
-                        {sessionOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Exam Date</label>
-                      <select
-                        value={shiftDate}
-                        onChange={(e) => { setShiftDate(e.target.value); setShift(""); }}
-                        disabled={!shiftSession}
-                        style={{ ...inputStyle, opacity: shiftSession ? 1 : 0.6 }}
-                      >
-                        <option value="">{shiftSession ? "Select date" : "Select session first"}</option>
-                        {dateOptions.map((d) => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={labelStyle}>Shift</label>
-                      <select
-                        value={shift}
-                        onChange={(e) => setShift(e.target.value)}
-                        disabled={!shiftDate}
-                        style={{ ...inputStyle, opacity: shiftDate ? 1 : 0.6 }}
-                      >
-                        <option value="">{shiftDate ? "Select shift" : "Select date first"}</option>
-                        {shiftOptions.map((s, i) => {
-                          const label = s === "Morning Shift" ? "Shift 1 — Morning" :
-                                        s === "Evening Shift" ? "Shift 2 — Evening" : s;
-                          return <option key={i} value={s}>{label}</option>;
-                        })}
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Percentile</label>
-                    <input value={percentile} onChange={(e) => setPercentile(e.target.value)} placeholder="Enter percentile (0–100)" inputMode="decimal" style={inputStyle} />
-                    {errors.percentile && <div style={errorStyle}>{errors.percentile}</div>}
-                  </div>
-
-                  <div>
-                    <label style={labelStyle}>Marks</label>
-                    <input value={marks} onChange={(e) => setMarks(e.target.value)} placeholder="Enter marks (0–300)" inputMode="decimal" style={inputStyle} />
-                    {errors.marks && <div style={errorStyle}>{errors.marks}</div>}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>CRL Rank</label>
-                    <input value={crl} onChange={(e) => setCrl(e.target.value.replace(/[^\d]/g, ""))} placeholder="Enter your CRL rank" inputMode="numeric" style={inputStyle} />
-                    {errors.crl && <div style={errorStyle}>{errors.crl}</div>}
+                      {YEARS.map((y) => <option key={y} value={y}>{y} Admission Counselling Cycle</option>)}
+                    </select>
                   </div>
                 </div>
               ) : (
-                <div style={{ display: "grid", gap: 12 }}>
+                /* PURE JEE STEP 1 */
+                <div className="space-y-5">
                   <div>
-                    <label style={labelStyle}>Marks</label>
-                    <input value={marks} onChange={(e) => setMarks(e.target.value)} placeholder="Enter marks (0–360)" inputMode="decimal" style={inputStyle} />
-                    {errors.marks && <div style={errorStyle}>{errors.marks}</div>}
-                  </div>
-                  <div>
-                    <label style={labelStyle}>CRL Rank</label>
-                    <input value={crl} onChange={(e) => setCrl(e.target.value.replace(/[^\d]/g, ""))} placeholder="Enter your CRL rank" inputMode="numeric" style={inputStyle} />
-                    {errors.crl && <div style={errorStyle}>{errors.crl}</div>}
-                  </div>
-                </div>
-              )}
-              <div style={monoNote}>ℹ️ Fill whichever you have — at least one required</div>
-              {errors.scores && <div style={errorStyle}>{errors.scores}</div>}
-
-              <div style={{ marginTop: 22 }}>
-                <label style={labelStyle}>Result Out?</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {([
-                    { v: true, label: "YES, RESULT OUT" },
-                    { v: false, label: "NO, NOT YET" },
-                  ] as const).map((o) => {
-                    const active = resultOut === o.v;
-                    return (
-                      <button
-                        key={o.label}
-                         onClick={() => chooseResultOut(o.v)}
-                        style={{
-                          padding: "12px", cursor: "pointer",
-                          background: active ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "var(--card)",
-                          border: `1.5px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
-                          borderRadius: 6,
-                          fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1px",
-                          color: "var(--foreground)",
-                        }}
-                      >{o.label}</button>
-                    );
-                  })}
-                </div>
-                {errors.resultOut && <div style={errorStyle}>{errors.resultOut}</div>}
-              </div>
-
-              {resultOut === true && (
-                <div style={{ marginTop: 18 }}>
-                  <label style={labelStyle}>Categories & Ranks</label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
-                    <select value={catDraft} onChange={(e) => setCatDraft(e.target.value)} style={inputStyle}>
-                      <option value="">Select category</option>
-                      {CATEGORIES.filter(c => !catRanks.some(r => r.cat === c)).map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <input
-                      value={catDraftRank}
-                      onChange={(e) => setCatDraftRank(e.target.value.replace(/[^\d]/g, ""))}
-                      placeholder="Enter rank for this category"
-                      disabled={!catDraft}
-                      style={{ ...inputStyle, opacity: catDraft ? 1 : 0.6 }}
-                    />
-                    <button
-                      onClick={addCatRank}
-                      disabled={!catDraft || !catDraftRank}
-                      style={{
-                        padding: "0 14px", borderRadius: 6, cursor: catDraft && catDraftRank ? "pointer" : "not-allowed",
-                        background: "var(--accent)", color: "var(--background)", border: "none",
-                        fontFamily: "var(--font-mono)", fontSize: 12, opacity: catDraft && catDraftRank ? 1 : 0.5,
-                      }}
-                    >+ Add</button>
-                  </div>
-                  {catRanks.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-                      {catRanks.map((r) => (
-                        <span key={r.cat} style={{
-                          padding: "4px 10px", borderRadius: 999,
-                          border: "1px solid var(--accent)",
-                          background: "color-mix(in srgb, var(--accent) 10%, transparent)",
-                          fontFamily: "var(--font-mono)", fontSize: 11,
-                          color: "var(--foreground)",
-                          display: "inline-flex", alignItems: "center", gap: 6,
-                        }}>
-                          {r.cat} : {r.rank}
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Engineering Examination Stream
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { v: "jee main" as JeeExamType, title: "JEE MAIN", sub: "NITs · IIITs · GFTIs" },
+                        { v: "jee advanced" as JeeExamType, title: "JEE ADVANCED", sub: "IITs Only (23 Campuses)" },
+                      ].map((c) => {
+                        const active = jeeExamType === c.v;
+                        return (
                           <button
-                            onClick={() => setCatRanks(catRanks.filter(c => c.cat !== r.cat))}
-                            style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--muted-foreground)", padding: 0, fontSize: 12 }}
-                          >✕</button>
-                        </span>
-                      ))}
+                            key={c.title}
+                            type="button"
+                            onClick={() => setJeeExamType(c.v)}
+                            className={`p-4 rounded-xl border text-center transition-all cursor-pointer ${
+                              active
+                                ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            <div className="font-mono text-sm font-bold">{c.title}</div>
+                            <div className="font-mono text-[10px] text-neutral-500 dark:text-neutral-400 mt-1">
+                              {c.sub}
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
-                  )}
-                  {errors.cats && <div style={errorStyle}>{errors.cats}</div>}
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Candidate Full Name
+                    </label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="e.g. Aryan Sharma"
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm font-medium transition"
+                      maxLength={100}
+                    />
+                    {errors.name && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.name}</div>}
+                  </div>
+
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      JoSAA Counselling Academic Cycle
+                    </label>
+                    <select
+                      value={year}
+                      onChange={(e) => setYear(parseInt(e.target.value, 10))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:border-blue-500 transition"
+                    >
+                      {YEARS.map((y) => <option key={y} value={y}>{y} Admission Cycle</option>)}
+                    </select>
+                  </div>
                 </div>
               )}
-
-              {resultOut === false && (
-                <div style={{ marginTop: 18 }}>
-                  <label style={labelStyle}>Category</label>
-                  <select value={catOnly} onChange={(e) => setCatOnly(e.target.value)} style={inputStyle}>
-                    <option value="">Select category</option>
-                    {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {errors.catOnly && <div style={errorStyle}>{errors.catOnly}</div>}
-                </div>
-              )}
-
-              <div style={{ marginTop: 22 }}>
-                <label style={labelStyle}>Gender</label>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {(["GENDER NEUTRAL", "FEMALE"] as const).map((g) => {
-                    const active = gender === g;
-                    return (
-                      <button
-                        key={g}
-                        onClick={() => setGender(g)}
-                        style={{
-                          padding: "12px", cursor: "pointer",
-                          background: active ? "color-mix(in srgb, var(--accent) 8%, transparent)" : "var(--card)",
-                          border: `1.5px solid ${active ? "var(--accent)" : "var(--border-strong)"}`,
-                          borderRadius: 6,
-                          fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1.5px",
-                          color: "var(--foreground)",
-                        }}
-                      >{g}</button>
-                    );
-                  })}
-                </div>
-                <div style={monoNote}>ℹ️ Female candidates are evaluated against both Gender-Neutral and Female quota seats</div>
-                {errors.gender && <div style={errorStyle}>{errors.gender}</div>}
-              </div>
             </>
           )}
 
-          {step === 3 && (
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* STEP 2: SCORES & CALIBRATION */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {step === 2 && (
             <>
-              <h2 style={{ fontFamily: "var(--font-mono)", fontSize: 14, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 18, color: "var(--foreground)" }}>
-                ◆ LOCATION & CONFIRM
-              </h2>
+              {isNeet ? (
+                /* PURE NEET STEP 2 */
+                <div className="space-y-5">
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Is Your Official NTA NEET Scorecard Declared?
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { v: true, label: "YES, RESULT DECLARED" },
+                        { v: false, label: "NO, EXPECTED SCORE ONLY" },
+                      ].map((o) => {
+                        const active = resultOut === o.v;
+                        return (
+                          <button
+                            key={o.label}
+                            type="button"
+                            onClick={() => setResultOut(o.v)}
+                            className={`py-3 px-3 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            {o.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.resultOut && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.resultOut}</div>}
+                  </div>
 
-              {needsState && (
-                <div style={{ marginBottom: 18, position: "relative" }}>
-                  <label style={labelStyle}>State of Education</label>
-                  <input
-                    value={stateOpen ? stateQuery : state}
-                    onChange={(e) => { setStateQuery(e.target.value); setStateOpen(true); }}
-                    onFocus={() => { setStateOpen(true); setStateQuery(""); }}
-                    onBlur={() => setTimeout(() => setStateOpen(false), 150)}
-                    placeholder="Type to search state..."
-                    style={inputStyle}
-                  />
-                  {stateOpen && (
-                    <div style={{
-                      position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
-                      maxHeight: 200, overflowY: "auto",
-                      background: "var(--card)", border: "1px solid var(--border-strong)",
-                      borderRadius: 4, marginTop: 4,
-                    }}>
-                      {filteredStates.length === 0 && (
-                        <div style={{ padding: 10, fontSize: 12, color: "var(--muted-foreground)" }}>No matches</div>
-                      )}
-                      {filteredStates.map((s) => (
-                        <div
-                          key={s}
-                          onMouseDown={() => { setState(s); setStateOpen(false); setStateQuery(""); }}
-                          style={{
-                            padding: "8px 12px", cursor: "pointer", fontSize: 13,
-                            color: "var(--foreground)",
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted)")}
-                          onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                        >{s}</div>
-                      ))}
+                  {/* If Result is Out -> AIR and Cat Rank */}
+                  {resultOut === true && (
+                    <div className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+                      <div>
+                        <label className="block font-mono text-[10.5px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1.5">
+                          All India Rank (AIR CRL)
+                        </label>
+                        <input
+                          value={neetAir}
+                          onChange={(e) => setNeetAir(e.target.value.replace(/[^\d]/g, ""))}
+                          placeholder="e.g. 1420"
+                          className="w-full px-3.5 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-mono text-[10.5px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                          Category Rank (Optional)
+                        </label>
+                        <input
+                          value={neetCatRank}
+                          onChange={(e) => setNeetCatRank(e.target.value.replace(/[^\d]/g, ""))}
+                          placeholder="e.g. 350"
+                          className="w-full px-3.5 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
                     </div>
                   )}
-                  {errors.state && <div style={errorStyle}>{errors.state}</div>}
+
+                  {/* Total Marks Out of 720 */}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Total NEET Marks (Out of 720)
+                    </label>
+                    <div className="relative">
+                      <input
+                        value={neetMarks}
+                        onChange={(e) => setNeetMarks(e.target.value)}
+                        placeholder="e.g. 685"
+                        inputMode="decimal"
+                        className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white font-mono text-base font-bold focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 font-mono text-xs text-neutral-400">
+                        / 720
+                      </span>
+                    </div>
+
+                    {estimatedNeetRank && (
+                      <div className="mt-2.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between text-xs font-mono text-emerald-600 dark:text-emerald-400">
+                        <span>◆ Calibrated AIR Projection:</span>
+                        <strong className="font-bold">~AIR {estimatedNeetRank.toLocaleString()}</strong>
+                      </div>
+                    )}
+                    {errors.neetMarks && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.neetMarks}</div>}
+                    {errors.neetScores && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.neetScores}</div>}
+                  </div>
+
+                  {/* Reservation Category */}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Reservation Category
+                    </label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:border-emerald-500 transition"
+                    >
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Gender Pool */}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Candidate Gender Seat Pool
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["GENDER NEUTRAL", "FEMALE"] as const).map((g) => {
+                        const active = gender === g;
+                        return (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setGender(g)}
+                            className={`py-3 px-3 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            {g === "FEMALE" ? "Female (Includes LHMC Delhi Seats)" : "Gender Neutral"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.gender && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.gender}</div>}
+                  </div>
+                </div>
+              ) : (
+                /* PURE JEE STEP 2 */
+                <div className="space-y-5">
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Is Your Official NTA Scorecard / CRL Rank Declared?
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { v: true, label: "YES, RESULT DECLARED" },
+                        { v: false, label: "NO, EXPECTED RAW SCORE" },
+                      ].map((o) => {
+                        const active = resultOut === o.v;
+                        return (
+                          <button
+                            key={o.label}
+                            type="button"
+                            onClick={() => setResultOut(o.v)}
+                            className={`py-3 px-3 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            {o.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.resultOut && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.resultOut}</div>}
+                  </div>
+
+                  {/* If Result Declared -> Rank & Percentile */}
+                  {resultOut === true && (
+                    <div className="grid grid-cols-2 gap-3 p-4 rounded-xl border border-blue-500/30 bg-blue-500/5">
+                      <div>
+                        <label className="block font-mono text-[10.5px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1.5">
+                          All India CRL Rank
+                        </label>
+                        <input
+                          value={jeeCrl}
+                          onChange={(e) => setJeeCrl(e.target.value.replace(/[^\d]/g, ""))}
+                          placeholder="e.g. 5420"
+                          className="w-full px-3.5 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-mono text-[10.5px] font-bold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1.5">
+                          NTA Percentile (0–100)
+                        </label>
+                        <input
+                          value={jeePercentile}
+                          onChange={(e) => setJeePercentile(e.target.value)}
+                          placeholder="e.g. 98.65"
+                          className="w-full px-3.5 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* If Expected Score / Exam Shift */}
+                  {resultOut === false && (
+                    <div className="space-y-4">
+                      {jeeExamType === "jee main" ? (
+                        <div className="p-4 rounded-xl border border-neutral-200 dark:border-white/10 bg-neutral-50/50 dark:bg-white/[0.02] space-y-3">
+                          <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-semibold">
+                            Exam Shift Details ({year})
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="block font-mono text-[10px] text-neutral-500 uppercase mb-1">Session</label>
+                              <select
+                                value={shiftSession}
+                                onChange={(e) => { setShiftSession(e.target.value); setShiftDate(""); setShift(""); }}
+                                className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-xs font-medium"
+                              >
+                                <option value="">Select session</option>
+                                {sessionOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block font-mono text-[10px] text-neutral-500 uppercase mb-1">Exam Date</label>
+                              <select
+                                value={shiftDate}
+                                onChange={(e) => { setShiftDate(e.target.value); setShift(""); }}
+                                disabled={!shiftSession}
+                                className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-xs font-medium disabled:opacity-50"
+                              >
+                                <option value="">{shiftSession ? "Select date" : "Session first"}</option>
+                                {dateOptions.map((d) => <option key={d} value={d}>{d}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block font-mono text-[10px] text-neutral-500 uppercase mb-1">Shift</label>
+                              <select
+                                value={shift}
+                                onChange={(e) => setShift(e.target.value)}
+                                disabled={!shiftDate}
+                                className="w-full px-3 py-2 rounded-lg border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-xs font-medium disabled:opacity-50"
+                              >
+                                <option value="">{shiftDate ? "Select shift" : "Date first"}</option>
+                                {shiftOptions.map((s, i) => (
+                                  <option key={i} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                              Expected Raw Marks (0–300)
+                            </label>
+                            <input
+                              value={jeeMarks}
+                              onChange={(e) => setJeeMarks(e.target.value)}
+                              placeholder="e.g. 195"
+                              className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-blue-600 dark:text-blue-400 font-mono text-base font-bold focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                            Expected JEE Advanced Raw Marks (0–360)
+                          </label>
+                          <input
+                            value={jeeMarks}
+                            onChange={(e) => setJeeMarks(e.target.value)}
+                            placeholder="e.g. 180"
+                            className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-blue-600 dark:text-blue-400 font-mono text-base font-bold focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      )}
+                      {errors.scores && <div className="font-mono text-[11px] text-red-500 mt-1">{errors.scores}</div>}
+                    </div>
+                  )}
+
+                  {/* Reservation Category */}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                      Reservation Category
+                    </label>
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white text-sm font-medium focus:outline-none focus:border-blue-500 transition"
+                    >
+                      {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  {/* Gender Pool */}
+                  <div>
+                    <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2.5">
+                      Candidate Gender Seat Pool
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["GENDER NEUTRAL", "FEMALE"] as const).map((g) => {
+                        const active = gender === g;
+                        return (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setGender(g)}
+                            className={`py-3 px-3 rounded-xl border font-mono text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.18)]"
+                                : "border-neutral-200 dark:border-white/10 bg-neutral-50/70 dark:bg-white/[0.02] text-neutral-700 dark:text-neutral-300 hover:border-neutral-400"
+                            }`}
+                          >
+                            {g === "FEMALE" ? "Female Supernumerary Quota" : "Gender Neutral"}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {errors.gender && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.gender}</div>}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {/* STEP 3: DOMICILE & CANDIDATE DOSSIER AUDIT */}
+          {/* ═══════════════════════════════════════════════════════════ */}
+          {step === 3 && (
+            <div className="space-y-5">
+              <div className="relative">
+                <label className="block font-mono text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-2">
+                  {isNeet ? "Domicile State (Required for 85% State Quota Seats)" : "State of Schooling / Domicile"}
+                </label>
+                <input
+                  value={stateOpen ? stateQuery : state}
+                  onChange={(e) => { setStateQuery(e.target.value); setStateOpen(true); }}
+                  onFocus={() => { setStateOpen(true); setStateQuery(""); }}
+                  onBlur={() => setTimeout(() => setStateOpen(false), 180)}
+                  placeholder="Search state (e.g. Delhi, Maharashtra, Uttar Pradesh, Karnataka)..."
+                  className="w-full px-4 py-2.5 rounded-xl border border-neutral-300 dark:border-white/15 bg-white dark:bg-[#131620] text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:border-blue-500 text-sm font-medium transition"
+                />
+                {stateOpen && (
+                  <div className="absolute top-full left-0 right-0 z-30 max-h-48 overflow-y-auto bg-white dark:bg-[#11141c] border border-neutral-300 dark:border-white/15 rounded-xl mt-1.5 shadow-xl">
+                    {filteredStates.map((s) => (
+                      <div
+                        key={s}
+                        onMouseDown={() => { setState(s); setStateOpen(false); setStateQuery(""); }}
+                        className="px-4 py-2 text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-white/10 cursor-pointer transition-colors"
+                      >
+                        {s}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.state && <div className="font-mono text-[11px] text-red-500 mt-1.5">{errors.state}</div>}
+              </div>
+
+              {isNeet && (
+                <div className="p-4 rounded-xl border border-emerald-500/25 bg-emerald-500/5 text-xs font-mono space-y-1.5">
+                  <div className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    ◆ ACTIVE COUNSELLING RADAR QUOTAS:
+                  </div>
+                  <div className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-[11.5px]">
+                    ✓ 15% All India Quota (MCC) across 350+ Central Medical Colleges<br />
+                    ✓ 85% State Quota in {resolvedState || "your selected Domicile State"}<br />
+                    ✓ 100% Apex Institutions (AIIMS, JIPMER, AMU, BHU)
+                  </div>
                 </div>
               )}
 
-              <div style={{
-                border: "1px solid var(--border-strong)",
-                borderRadius: 6, padding: 16,
-                fontFamily: "var(--font-mono)", fontSize: 12, lineHeight: 1.9,
-                background: "var(--muted)",
-                color: "var(--foreground)",
-              }}>
-                <SummaryRow k="EXAM TYPE" v={examType === "jee main" ? "JEE Main" : examType === "jee advanced" ? "JEE Advanced" : "—"} />
-                <SummaryRow k="NAME" v={name || "—"} />
-                <SummaryRow k="YEAR" v={String(year)} />
-                {examType === "jee main" && (
-                  <SummaryRow k="EXAM SHIFT" v={
-                    shiftSession && shiftDate && shift
-                      ? `${shiftSession} • ${shiftDate} • ${shift === "Morning Shift" ? "Shift 1 Morning" : shift === "Evening Shift" ? "Shift 2 Evening" : shift}`
-                      : "—"
-                  } />
-                )}
-                {examType === "jee main" && <SummaryRow k="PERCENTILE" v={percentile || "—"} />}
+              {/* Executive Summary Card */}
+              <div className="rounded-2xl border border-neutral-200 dark:border-white/10 bg-neutral-50/80 dark:bg-[#11141c]/90 p-5 font-mono text-xs space-y-2.5">
+                <div className="flex items-center justify-between pb-2.5 border-b border-neutral-200 dark:border-white/10">
+                  <span className="text-neutral-500 uppercase tracking-wider">EXAMINATION ENGINE</span>
+                  <strong className="font-bold" style={{ color: accentColor }}>
+                    {isNeet ? "MCC NEET-UG MEDICAL" : "JoSAA JEE ENGINEERING"}
+                  </strong>
+                </div>
 
-                <SummaryRow k="MARKS" v={marks || "—"} />
-                <SummaryRow k="CRL RANK" v={crl || "—"} />
-                <SummaryRow k="RESULT OUT" v={resultOut === null ? "—" : resultOut ? "Yes" : "No"} />
-                <SummaryRow k="CATEGORIES" v={
-                  resultOut
-                    ? (catRanks.length ? catRanks.map(c => `${c.cat} → ${c.rank}`).join(" | ") : "—")
-                    : (catOnly || "—")
-                } />
-                <SummaryRow k="GENDER" v={gender === "GENDER NEUTRAL" ? "Gender Neutral" : gender === "FEMALE" ? "Female" : "—"} />
-                {needsState && <SummaryRow k="STATE" v={resolvedState || "—"} />}
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">CANDIDATE:</span>
+                  <span className="font-semibold text-neutral-900 dark:text-white">{name || "—"}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">SCORE / MARKS:</span>
+                  <span className="font-bold text-neutral-900 dark:text-white">
+                    {isNeet ? (neetMarks ? `${neetMarks} / 720` : "—") : (jeeMarks ? `${jeeMarks} Marks` : "—")}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">ALL INDIA RANK (AIR):</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                    {isNeet 
+                      ? (neetAir ? `#${neetAir}` : estimatedNeetRank ? `~AIR ${estimatedNeetRank.toLocaleString()}` : "—") 
+                      : (jeeCrl ? `#${jeeCrl}` : "—")}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">CATEGORY & GENDER:</span>
+                  <span>{category} · {gender === "FEMALE" ? "Female" : "Gender Neutral"}</span>
+                </div>
+
+                <div className="flex justify-between pt-2 border-t border-neutral-200 dark:border-white/10">
+                  <span className="text-neutral-500">DOMICILE STATE:</span>
+                  <strong className="text-neutral-900 dark:text-white">{resolvedState || "—"}</strong>
+                </div>
               </div>
-            </>
+            </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: "14px 20px",
-          borderTop: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10,
-        }}>
+        {/* ─── MODAL FOOTER ─── */}
+        <div className="flex items-center justify-between px-6 sm:px-8 py-4 border-t border-neutral-200 dark:border-white/10 bg-neutral-50/60 dark:bg-white/[0.02]">
           {step > 1 ? (
             <button
               onClick={() => goStep(step - 1)}
-              style={{
-                background: "transparent", border: "1px solid var(--border-strong)",
-                padding: "10px 16px", borderRadius: 4, cursor: "pointer",
-                fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1px",
-                color: "var(--foreground)",
-              }}
-            >← {step === 3 ? "EDIT" : "BACK"}</button>
+              className="px-5 py-2 rounded-xl border border-neutral-300 dark:border-white/15 bg-transparent text-neutral-700 dark:text-neutral-300 font-mono text-xs font-semibold hover:bg-neutral-200/50 dark:hover:bg-white/10 transition cursor-pointer"
+            >
+              ← BACK
+            </button>
           ) : <span />}
 
           {step < 3 ? (
             <button
               onClick={onNext}
-              disabled={nextDisabled}
-              style={{
-                background: nextDisabled ? "var(--muted)" : "var(--accent)",
-                color: nextDisabled ? "var(--muted-foreground)" : "var(--background)",
-                border: "none", padding: "10px 22px", borderRadius: 4,
-                cursor: nextDisabled ? "not-allowed" : "pointer",
-                fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1.5px",
-              }}
-            >NEXT →</button>
+              className="px-6 py-2.5 rounded-xl bg-neutral-950 dark:bg-white text-white dark:text-neutral-950 font-mono text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-sm transition cursor-pointer"
+            >
+              CONTINUE →
+            </button>
           ) : (
             <button
               onClick={onPredict}
-              style={{
-                background: "var(--accent)", color: "var(--background)",
-                border: "none", padding: "10px 22px", borderRadius: 4, cursor: "pointer",
-                fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1.5px",
-              }}
-            >PREDICT NOW →</button>
+              className="px-6 py-2.5 rounded-xl bg-neutral-950 dark:bg-white text-white dark:text-neutral-950 font-mono text-xs font-bold uppercase tracking-wider hover:bg-neutral-800 dark:hover:bg-neutral-200 shadow-md transition cursor-pointer"
+            >
+              {isNeet ? "COMPILE MEDICAL DOSSIER →" : "COMPILE ADMISSION DOSSIER →"}
+            </button>
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function SummaryRow({ k, v }: { k: string; v: string }) {
-  return (
-    <div style={{ display: "flex", gap: 10 }}>
-      <span style={{ color: "var(--muted-foreground)", minWidth: 110 }}>{k.padEnd(11)}</span>
-      <span>: {v}</span>
     </div>
   );
 }

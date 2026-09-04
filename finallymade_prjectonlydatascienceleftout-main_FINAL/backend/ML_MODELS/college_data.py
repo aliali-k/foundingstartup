@@ -408,7 +408,7 @@ def display_results(df: pd.DataFrame, user_name: str) -> None:
         inst_df = df[df["Institute Type"] == inst_type]
         for category in inst_df["Category"].unique():
             print(f"\n  CATEGORY: {category}")
-            print(f"  {'─' * 70}")
+            print(f"  {'-' * 70}")
             cat_df     = inst_df[inst_df["Category"] == category].copy()
             display_df = cat_df[[
                 "Institute", "Program", "Quota", "Gender Pool",
@@ -428,7 +428,10 @@ def display_results(df: pd.DataFrame, user_name: str) -> None:
 def run_college_prediction(user_data: dict) -> pd.DataFrame:
     user_name  = str(user_data.get("name", "Student"))
     results_df = filter_csv_data(user_data)
-    display_results(results_df, user_name)
+    try:
+        display_results(results_df, user_name)
+    except Exception as e:
+        print(f"DEBUG: display_results suppressed non-critical print error: {e}")
     return results_df
 
 

@@ -50,62 +50,62 @@
 
 :root {
   --radius: 0.625rem;
-  /* Creamy light theme */
-  --background: #fbfaf6;
-  --background-2: #f1ede2;
-  --foreground: #1a1a2e;
-  --card: #f6f2e6;
-  --card-foreground: #1a1a2e;
-  --popover: #fbfaf6;
-  --popover-foreground: #1a1a2e;
-  --primary: #4f46e5;
-  --primary-foreground: #fbfaf6;
-  --secondary: #ece6d4;
-  --secondary-foreground: #1a1a2e;
-  --muted: #ece6d4;
-  --muted-foreground: #6b6a80;
-  --accent: #4f46e5;
-  --accent-foreground: #fbfaf6;
+  /* Clean modern neutral theme */
+  --background: #ffffff;
+  --background-2: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #18181b;
+  --accent-foreground: #fafafa;
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: #fbfaf6;
-  --border: rgba(26, 26, 46, 0.14);
-  --input: rgba(26, 26, 46, 0.14);
-  --ring: #4f46e5;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --input: #e4e4e7;
+  --ring: #18181b;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: #fbfaf6;
-  --sidebar-foreground: #1a1a2e;
-  --sidebar-primary: #4f46e5;
-  --sidebar-primary-foreground: #fbfaf6;
-  --sidebar-accent: #ece6d4;
-  --sidebar-accent-foreground: #1a1a2e;
-  --sidebar-border: rgba(26, 26, 46, 0.14);
-  --sidebar-ring: #4f46e5;
+  --sidebar: #fafafa;
+  --sidebar-foreground: #09090b;
+  --sidebar-primary: #18181b;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #09090b;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #18181b;
 
-  --space-bg: #fbfaf6;
-  --space-bg-2: #f1ede2;
-  --star-color: rgba(79, 70, 229, 0.55);
-  --orbit-line: rgba(79, 70, 229, 0.28);
-  --orbit-label: rgba(79, 70, 229, 0.72);
+  --space-bg: #ffffff;
+  --space-bg-2: #fafafa;
+  --star-color: rgba(0, 0, 0, 0.4);
+  --orbit-line: rgba(0, 0, 0, 0.15);
+  --orbit-label: rgba(0, 0, 0, 0.6);
   --sun-core: #ffffff;
-  --sun-glow-1: #a5b4fc;
-  --sun-glow-2: #4f46e5;
-  --comet-color: rgba(79, 70, 229, 0.9);
+  --sun-glow-1: #e4e4e7;
+  --sun-glow-2: #71717a;
+  --comet-color: rgba(0, 0, 0, 0.8);
 
   /* Landing page extras */
-  --border-strong: rgba(79, 70, 229, 0.2);
-  --cta-border: rgba(79, 70, 229, 0.4);
-  --cta-muted-border: rgba(0, 0, 0, 0.12);
-  --wave: rgba(79, 70, 229, 0.06);
-  --path: rgba(79, 70, 229, 0.18);
-  --nav-bg: rgba(251, 250, 246, 0.95);
-  --node-bg: #f1ede2;
-  --node-border: rgba(79, 70, 229, 0.2);
+  --cta-border: #d4d4d8;
+  --cta-muted-border: #e4e4e7;
+  --wave: rgba(0, 0, 0, 0.04);
+  --path: rgba(0, 0, 0, 0.15);
+  --nav-bg: rgba(255, 255, 255, 0.95);
+  --node-bg: #f4f4f5;
+  --node-border: #e4e4e7;
   --warn: #b45309;
-  --stat-bar-bg: rgba(79, 70, 229, 0.04);
+  --stat-bar-bg: rgba(0, 0, 0, 0.04);
 }
 
 .dark {
@@ -498,3 +498,74 @@
 .theme-orb:hover {
   filter: brightness(1.08);
 }
+
+@keyframes ecg-pulse {
+  0% {
+    stroke-dashoffset: 1200;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(1.15);
+  }
+  30% {
+    transform: scale(1.03);
+  }
+  45% {
+    transform: scale(1.1);
+  }
+  60% {
+    transform: scale(1);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* 💎 LUXURY STUDIO GLASS & TELEMETRY SUITE */
+/* ═══════════════════════════════════════════════════════════════════ */
+.luxury-glass {
+  background: rgba(13, 15, 20, 0.88);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 24px 68px rgba(0, 0, 0, 0.65);
+}
+
+.luxury-glass-light {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.8), 0 20px 50px rgba(0, 0, 0, 0.08);
+}
+
+.telemetry-grid {
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes telemetry-scan {
+  0% { transform: translateY(-100%); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(1000%); opacity: 0; }
+}
+
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+

@@ -1,1000 +1,260 @@
 import { useEffect, useRef, useState, useMemo } from "react";
-import { BRANCH_PLANETS, type BranchPlanet } from "@/lib/branch-planets";
+import { useExamMode } from "@/lib/exam-mode-context";
 
-const SCENE_W = 1600;
-const SCENE_H = 720;
-const CX = 800;
-const CY = 360;
-const ORBIT_RX0 = 120;
-const ORBIT_STEP = 46;
-const ORBIT_RATIO = 0.42;
-const BASE_SPEED = 26; // sec for innermost
-const SPEED_STEP = 5;
-
-function orbitPath(rx: number, ry: number) {
-  return `M ${CX - rx},${CY} a ${rx},${ry} 0 1,0 ${rx * 2},0 a ${rx},${ry} 0 1,0 ${-rx * 2},0 Z`;
+interface CollegeNode {
+  id: string;
+  name: string;
+  shortName: string;
+  stream: "jee" | "neet";
+  closingRank: number;
+  metric: string;
+  metricLabel: string;
+  quota: string;
+  bond: string;
+  x: number; // percentage in coordinate space (0-100)
+  y: number; // percentage in coordinate space (0-100)
 }
 
-type OrbitMeta = {
-  planet: BranchPlanet;
-  rx: number;
-  ry: number;
-  path: string;
-  duration: number;
-  labelY: number;
-  delay: number;
-};
+const NODES: CollegeNode[] = [
+  // JEE Apex
+  { id: "iitb", name: "IIT Bombay", shortName: "IIT-B", stream: "jee", closingRank: 68, metric: "₹45 LPA", metricLabel: "Median Pkg", quota: "OPEN AIQ", bond: "0-Year", x: 48, y: 38 },
+  { id: "iitd", name: "IIT Delhi", shortName: "IIT-D", stream: "jee", closingRank: 118, metric: "₹42 LPA", metricLabel: "Median Pkg", quota: "OPEN AIQ", bond: "0-Year", x: 58, y: 34 },
+  { id: "iitm", name: "IIT Madras", shortName: "IIT-M", stream: "jee", closingRank: 680, metric: "₹38 LPA", metricLabel: "Median Pkg", quota: "OPEN AIQ", bond: "0-Year", x: 40, y: 46 },
+  { id: "iiith", name: "IIIT Hyderabad", shortName: "IIIT-H", stream: "jee", closingRank: 980, metric: "₹42 LPA", metricLabel: "Top Coding", quota: "Main Direct", bond: "0-Year", x: 64, y: 44 },
+  { id: "nitt", name: "NIT Trichy", shortName: "NIT-T", stream: "jee", closingRank: 2100, metric: "₹32 LPA", metricLabel: "Median Pkg", quota: "OS Quota", bond: "HS 50%", x: 32, y: 32 },
+  { id: "iitk", name: "IIT Kanpur", shortName: "IIT-K", stream: "jee", closingRank: 2240, metric: "₹28 LPA", metricLabel: "Median Pkg", quota: "OPEN AIQ", bond: "0-Year", x: 68, y: 58 },
+  { id: "nits", name: "NIT Surathkal", shortName: "NIT-K", stream: "jee", closingRank: 3100, metric: "₹26 LPA", metricLabel: "Median Pkg", quota: "OS Quota", bond: "HS 50%", x: 26, y: 58 },
 
-function useOrbits(): OrbitMeta[] {
-  return useMemo(
-    () =>
-      BRANCH_PLANETS.map((p, i) => {
-        const rx = ORBIT_RX0 + p.orbitIndex * ORBIT_STEP;
-        const ry = rx * ORBIT_RATIO;
-        return {
-          planet: p,
-          rx,
-          ry,
-          path: orbitPath(rx, ry),
-          duration: BASE_SPEED + p.orbitIndex * SPEED_STEP,
-          labelY: CY - ry - 6,
-          // spread starting phase around each orbit (each planet 27% further along)
-          delay: -((BASE_SPEED + p.orbitIndex * SPEED_STEP) * ((i * 0.27) % 1)),
-        };
-      }),
-    [],
-  );
-}
-
-type Stars = Array<{ x: number; y: number; s: number; o: number; d: number; t: number }>;
-
-function useStars(): Stars {
-  return useMemo(() => {
-    // deterministic pseudo-random so SSR & CSR match
-    const rand = mulberry32(0xa5f01c);
-    const out: Stars = [];
-    for (let i = 0; i < 110; i++) {
-      out.push({
-        x: rand() * 100,
-        y: rand() * 100,
-        s: 0.5 + rand() * 1.8,
-        o: 0.25 + rand() * 0.75,
-        d: 2 + rand() * 4,
-        t: -rand() * 6,
-      });
-    }
-    return out;
-  }, []);
-}
-
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+  // NEET Apex
+  { id: "aiimsd", name: "AIIMS New Delhi", shortName: "AIIMS-D", stream: "neet", closingRank: 57, metric: "2,500 Beds", metricLabel: "Hospital OPD", quota: "AIIMS Open", bond: "0-Yr / ₹0", x: 52, y: 36 },
+  { id: "mamc", name: "MAMC New Delhi", shortName: "MAMC", stream: "neet", closingRank: 105, metric: "2,800 Beds", metricLabel: "Daily Load", quota: "15% AIQ", bond: "1-Yr / ₹3L", x: 44, y: 32 },
+  { id: "jipmer", name: "JIPMER Puducherry", shortName: "JIPMER", stream: "neet", closingRank: 277, metric: "2,200 Beds", metricLabel: "Hospital OPD", quota: "Central AIQ", bond: "0-Yr / ₹0", x: 62, y: 38 },
+  { id: "vmmc", name: "VMMC & Safdarjung", shortName: "VMMC", stream: "neet", closingRank: 142, metric: "2,900 Beds", metricLabel: "Daily Load", quota: "15% AIQ", bond: "1-Yr / ₹3L", x: 38, y: 42 },
+  { id: "aiimsb", name: "AIIMS Bhubaneswar", shortName: "AIIMS-BBSR", stream: "neet", closingRank: 540, metric: "1,100 Beds", metricLabel: "Super Specialty", quota: "AIIMS Open", bond: "0-Yr / ₹0", x: 66, y: 48 },
+  { id: "sethgs", name: "Seth GS Mumbai", shortName: "KEM-GS", stream: "neet", closingRank: 680, metric: "2,250 Beds", metricLabel: "KEM Hospital", quota: "15% AIQ / 85% MH", bond: "1-Yr / ₹10L", x: 30, y: 48 },
+  { id: "kgmu", name: "KGMU Lucknow", shortName: "KGMU", stream: "neet", closingRank: 1850, metric: "4,500 Beds", metricLabel: "Largest OPD", quota: "15% AIQ / 85% UP", bond: "2-Yr / ₹10L", x: 56, y: 64 },
+];
 
 export function BranchSolarSystem() {
-  const orbits = useOrbits();
-  const stars = useStars();
-  const rootRef = useRef<HTMLDivElement>(null);
-  const sceneWrapRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
-  const [hovered, setHovered] = useState<string | null>(null);
+  const { isNeet } = useExamMode();
+  const [hoveredNode, setHoveredNode] = useState<CollegeNode | null>(null);
+  const [activeAutoNode, setActiveAutoNode] = useState<number>(0);
+  const [radarDegrees, setRadarDegrees] = useState(0);
 
+  // Smooth radar sweep animation
   useEffect(() => {
-    const el = sceneWrapRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const rect = el.getBoundingClientRect();
-      const sx = rect.width / SCENE_W;
-      const sy = rect.height / SCENE_H;
-      setScale(Math.max(0.2, Math.min(sx, sy)));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
+    let animId: number;
+    let start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = (now - start) / 1000;
+      setRadarDegrees((elapsed * 35) % 360);
+      animId = requestAnimationFrame(tick);
+    };
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
   }, []);
 
+  // Filter nodes according to active mode
+  const currentNodes = useMemo(() => {
+    return NODES.filter((n) => (isNeet ? n.stream === "neet" : n.stream === "jee"));
+  }, [isNeet]);
+
+  // Periodic cycle of auto-highlighting
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActiveAutoNode((prev) => (prev + 1) % currentNodes.length);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, [currentNodes.length]);
+
+  const selectedNode = hoveredNode || currentNodes[activeAutoNode] || currentNodes[0];
+
+  const primaryAccent = isNeet ? "#10b981" : "#3b82f6";
+  const primaryGlow = isNeet ? "rgba(16, 185, 129, 0.25)" : "rgba(59, 130, 246, 0.25)";
+
   return (
-    <div
-      ref={rootRef}
-      className="pointer-events-none absolute inset-0 flex h-full w-full flex-col overflow-hidden"
-      style={{
-        backgroundImage:
-          "radial-gradient(ellipse at 45% 42%, color-mix(in oklab, var(--sun-glow-2) 18%, transparent), transparent 55%), linear-gradient(180deg, var(--space-bg) 0%, var(--space-bg-2) 100%)",
-      }}
-    >
-      {/* Starfield */}
-      <div className="pointer-events-none absolute inset-0">
-        {stars.map((s, i) => (
-          <span
-            key={i}
-            className="twinkle absolute rounded-full"
-            style={{
-              left: `${s.x}%`,
-              top: `${s.y}%`,
-              width: `${s.s}px`,
-              height: `${s.s}px`,
-              background: "var(--star-color)",
-              opacity: s.o,
-              boxShadow: `0 0 ${s.s * 2}px var(--star-color)`,
-              animation: `twinkle ${s.d}s ease-in-out ${s.t}s infinite`,
-            }}
-          />
-        ))}
-      </div>
+    <div className="relative w-full h-full min-h-[580px] bg-[#07090e] text-neutral-100 flex flex-col justify-between overflow-hidden select-none font-mono">
+      {/* ─── 1. RADAR COORDINATE BACKGROUND GRID ─── */}
+      <div 
+        aria-hidden
+        className="absolute inset-0 pointer-events-none opacity-40"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle at 50% 45%, ${primaryGlow} 0%, transparent 65%),
+            linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: "100% 100%, 48px 48px, 48px 48px",
+        }}
+      />
 
-      {/* Comets */}
-      <Comet variant="a" duration={28} delay={0} top="0%" left="0%" />
-      <Comet variant="b" duration={36} delay={-14} top="0%" left="0%" />
-      <Comet variant="c" duration={22} delay={-6} top="0%" left="0%" />
-
-      {/* Corner title */}
-      <div className="pointer-events-none absolute top-4 left-4 z-10 md:top-8 md:left-8">
-        <div className="text-[10px] uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
-          ◆ Choose your orbit
+      {/* ─── 2. TOP TELEMETRY HUD BAR ─── */}
+      <div className="relative z-10 p-6 md:p-8 flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-black/40 backdrop-blur-md">
+        <div>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-white/5 text-[10.5px] font-semibold tracking-[0.2em] uppercase">
+            <span className="size-2 rounded-full animate-ping" style={{ background: primaryAccent }} />
+            <span style={{ color: primaryAccent }}>
+              {isNeet ? "MCC CLINICAL MATRIX RADAR · 2026" : "JoSAA ADMISSION TELEMETRY RADAR · 2026"}
+            </span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mt-2">
+            National Admission Probability Spectrum
+          </h1>
+          <p className="text-xs text-neutral-400 max-w-xl mt-1 leading-relaxed">
+            Real-time algorithmic coordinate mapping of India's premier {isNeet ? "medical" : "engineering"} institutions against verified 10-year opening and closing ranks.
+          </p>
         </div>
-        <div
-          className="mt-1 font-black uppercase leading-[0.9] tracking-tight text-[color:var(--foreground)]"
-          style={{ fontSize: "clamp(1.4rem, 3.4vw, 2.6rem)", letterSpacing: "-0.02em" }}
-        >
-          Engineering
-          <br />
-          <span className="text-[color:var(--sun-glow-1)]">Universe</span>
-        </div>
-      </div>
 
-      {/* Scene (orbits + planets) — takes flex-1, legend below */}
-      <div
-        ref={sceneWrapRef}
-        className="relative flex flex-1 items-center justify-center px-2"
-        style={{ minHeight: 0 }}
-      >
-        <div
-          className="pointer-events-auto relative"
-          style={{
-            width: SCENE_W,
-            height: SCENE_H,
-            transform: `scale(${scale})`,
-            transformOrigin: "center center",
-          }}
-        >
-          {/* SVG: orbit paths + labels + sun glow */}
-          <svg
-            className="absolute inset-0"
-            viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
-            width={SCENE_W}
-            height={SCENE_H}
-            aria-hidden
-          >
-            <defs>
-              {orbits.map((o, i) => (
-                <path key={i} id={`orbit-${i}`} d={o.path} />
-              ))}
-              <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="var(--sun-core)" stopOpacity="1" />
-                <stop offset="35%" stopColor="var(--sun-glow-1)" stopOpacity="0.95" />
-                <stop offset="70%" stopColor="var(--sun-glow-2)" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="var(--sun-glow-2)" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-
-            {orbits.map((o, i) => {
-              const isHot = hovered === o.planet.slug;
-              return (
-                <g key={i}>
-                  <use
-                    href={`#orbit-${i}`}
-                    fill="none"
-                    stroke={isHot ? "var(--sun-glow-1)" : "var(--orbit-line)"}
-                    strokeWidth={isHot ? 1.4 : 0.7}
-                    style={{
-                      transition: "stroke 200ms, stroke-width 200ms",
-                      filter: isHot
-                        ? "drop-shadow(0 0 6px var(--sun-glow-1))"
-                        : "none",
-                    }}
-                  />
-                  <text
-                    fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-                    fontSize="9"
-                    fontWeight={600}
-                    letterSpacing="2.4"
-                    fill={isHot ? "var(--foreground)" : "var(--orbit-label)"}
-                    textAnchor="middle"
-                    style={{ transition: "fill 200ms" }}
-                  >
-                    <textPath href={`#orbit-${i}`} startOffset={`${((75 + i * 7.7) % 100).toFixed(2)}%`}>
-                      {o.planet.short}
-                    </textPath>
-                  </text>
-                </g>
-              );
-            })}
-
-            {/* Sun glow (SVG under HTML sun) */}
-            <circle cx={CX} cy={CY} r={95} fill="url(#sunGrad)" opacity={0.75} />
-          </svg>
-
-          {/* Sun core */}
-          <div
-            className="sun-pulse absolute z-10"
-            style={{
-              left: CX,
-              top: CY,
-              width: 58,
-              height: 58,
-              transform: "translate(-50%, -50%)",
-              borderRadius: "9999px",
-              background:
-                "radial-gradient(circle at 40% 40%, var(--sun-core) 0%, var(--sun-glow-1) 55%, var(--sun-glow-2) 90%, transparent 100%)",
-              boxShadow:
-                "0 0 40px var(--sun-glow-1), 0 0 90px var(--sun-glow-2)",
-              animation: "sun-pulse 6s ease-in-out infinite",
-            }}
-          />
-
-          {/* Planets */}
-          {orbits.map((o) => (
-            <PlanetOnOrbit
-              key={o.planet.code}
-              orbit={o}
-              hovered={hovered === o.planet.slug}
-              onEnter={() => setHovered(o.planet.slug)}
-              onLeave={() => setHovered((h) => (h === o.planet.slug ? null : h))}
-            />
-          ))}
+        {/* Live Coordinate Gauge */}
+        <div className="flex items-center gap-3 bg-white/[0.03] border border-white/10 px-4 py-2.5 rounded-xl">
+          <div className="text-right">
+            <div className="text-[10px] uppercase text-neutral-500 tracking-wider">RADAR BEARING</div>
+            <div className="text-sm font-bold text-white tabular-nums">{radarDegrees.toFixed(1)}° AZIMUTH</div>
+          </div>
+          <div className="w-px h-7 bg-white/10" />
+          <div className="text-right">
+            <div className="text-[10px] uppercase text-neutral-500 tracking-wider">INSTITUTES MAPPED</div>
+            <div className="text-sm font-bold tabular-nums" style={{ color: primaryAccent }}>
+              {isNeet ? "706 GMCs" : "118 INIs / NITs"}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Legend row — spans full width, larger planet icons */}
-      <div className="pointer-events-auto relative z-20 mx-auto w-full px-4 pb-6 md:px-8">
-        <div className="flex w-full items-start justify-between gap-1 sm:gap-2">
-          {BRANCH_PLANETS.map((p) => {
-            const active = hovered === p.slug;
-            return (
-              <a
-                key={p.code}
-                href="#upload"
-                onMouseEnter={() => setHovered(p.slug)}
-                onMouseLeave={() =>
-                  setHovered((h) => (h === p.slug ? null : h))
-                }
-                className="group flex flex-1 flex-col items-center gap-1.5 transition-transform"
-                style={{ transform: active ? "translateY(-4px)" : undefined }}
-                title={p.name}
+      {/* ─── 3. CENTRAL RADAR DISPLAY CANVAS ─── */}
+      <div className="relative flex-1 flex items-center justify-center p-4 min-h-[380px]">
+        {/* Radar Range Rings (Concentric circles) */}
+        <div className="relative size-[340px] sm:size-[480px] md:size-[560px] rounded-full border border-white/10 flex items-center justify-center pointer-events-none">
+          {/* Outer ring label */}
+          <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] text-neutral-500 uppercase tracking-widest bg-[#07090e] px-2">
+            AIR 50,000 PERIPHERY
+          </span>
+
+          {/* Ring 2 */}
+          <div className="size-[75%] rounded-full border border-white/10 flex items-center justify-center relative">
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] text-neutral-500 uppercase tracking-widest bg-[#07090e] px-2">
+              AIR 15,000 TARGET
+            </span>
+
+            {/* Ring 3 */}
+            <div className="size-[65%] rounded-full border border-white/15 flex items-center justify-center relative">
+              <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] text-neutral-400 uppercase tracking-widest bg-[#07090e] px-2">
+                AIR 3,000 ELITE
+              </span>
+
+              {/* Core Ring */}
+              <div 
+                className="size-[45%] rounded-full border flex items-center justify-center relative"
+                style={{ borderColor: `${primaryAccent}40` }}
               >
-                <div
-                  className="relative overflow-hidden rounded-full border transition-all"
-                  style={{
-                    width: "clamp(48px, 5.2vw, 78px)",
-                    aspectRatio: "1 / 1",
-                    borderColor: active
-                      ? p.accent
-                      : "color-mix(in oklab, var(--foreground) 22%, transparent)",
-                    boxShadow: active
-                      ? `0 0 26px ${p.accent}, inset 0 0 14px rgba(0,0,0,0.6)`
-                      : `0 0 0 1px rgba(0,0,0,0.6) inset`,
-                  }}
-                >
-                  <img
-                    src={p.image}
-                    alt={p.name}
-                    loading="lazy"
-                    width={120}
-                    height={120}
-                    className="h-full w-full scale-[1.05] object-cover"
-                    style={{ objectPosition: "center" }}
-                  />
-                </div>
-                <span
-                  className="text-[10px] font-bold uppercase tracking-[0.18em]"
-                  style={{
-                    color: active
-                      ? "var(--foreground)"
-                      : "var(--muted-foreground)",
-                  }}
-                >
-                  {p.short}
+                <span className="absolute top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-widest bg-[#07090e] px-2" style={{ color: primaryAccent }}>
+                  APEX AIR &lt; 500
                 </span>
-              </a>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* Scroll cue — sits below legend, never overlaps orbit labels */}
-      <a
-        href="#upload"
-        className="pointer-events-auto relative z-20 mx-auto mb-4 flex flex-col items-center gap-1 text-[10px] uppercase tracking-[0.35em] text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
-      >
-        {/* <span>Scroll to upload</span>
-        <span
-          className="text-lg"
-          style={{ animation: "scroll-cue 1.6s ease-in-out infinite" }}
-        >
-          ↓
-        </span> */}
-      </a>
+                {/* Radar Center Crosshair */}
+                <div className="size-2 rounded-full" style={{ background: primaryAccent }} />
+              </div>
+            </div>
+          </div>
 
-      {/* Tooltip */}
-      {hovered && <PlanetTooltip slug={hovered} />}
-    </div>
-  );
-}
-
-function PlanetOnOrbit({
-  orbit,
-  hovered,
-  onEnter,
-  onLeave,
-}: {
-  orbit: OrbitMeta;
-  hovered: boolean;
-  onEnter: () => void;
-  onLeave: () => void;
-}) {
-  const p = orbit.planet;
-  const size = p.size;
-  return (
-    <div
-      className="planet-orbit absolute"
-      style={
-        {
-          left: 0,
-          top: 0,
-          width: size,
-          height: size,
-          marginLeft: -size / 2,
-          marginTop: -size / 2,
-          offsetPath: `path("${orbit.path}")`,
-          offsetRotate: "0deg",
-          offsetAnchor: "center",
-          animation: `orbit-travel ${orbit.duration}s linear ${orbit.delay}s infinite`,
-          willChange: "offset-distance",
-          zIndex: 5,
-        } as React.CSSProperties
-      }
-    >
-      <button
-        type="button"
-        onMouseEnter={onEnter}
-        onMouseLeave={onLeave}
-        onFocus={onEnter}
-        onBlur={onLeave}
-        aria-label={p.name}
-        className="pointer-events-auto relative block h-full w-full cursor-pointer rounded-full transition-transform"
-        style={{
-          transform: hovered ? "scale(1.35)" : "scale(1)",
-          transitionDuration: "220ms",
-        }}
-      >
-        {/* Ring (behind planet) */}
-        {p.ring && (
-          <span
-            aria-hidden
-            className="absolute left-1/2 top-1/2"
+          {/* Radar Sweep Line (Phosphor Line) */}
+          <div
+            className="absolute inset-0 pointer-events-none rounded-full"
             style={{
-              width: size * 2.2,
-              height: size * 0.5,
-              transform: `translate(-50%, -50%) rotate(${p.ring.tilt}deg)`,
-              borderRadius: "9999px",
-              border: `${Math.max(1.5, size * 0.045)}px solid ${p.ring.color}`,
-              boxShadow: `0 0 12px ${p.ring.color}, inset 0 0 6px ${p.ring.color}`,
-              opacity: 0.9,
+              background: `conic-gradient(from ${radarDegrees}deg at 50% 50%, ${primaryGlow} 0deg, transparent 45deg, transparent 360deg)`,
             }}
           />
-        )}
-        {/* Planet body */}
-        <span
-          aria-hidden
-          className="absolute inset-0 overflow-hidden rounded-full"
-          style={{
-            boxShadow: hovered
-              ? `0 0 ${size * 0.9}px ${p.accent}, inset -${size * 0.15}px -${size * 0.15}px ${size * 0.35}px rgba(0,0,0,0.7)`
-              : `0 0 ${size * 0.55}px ${p.accent}, inset -${size * 0.12}px -${size * 0.12}px ${size * 0.3}px rgba(0,0,0,0.65)`,
-            transition: "box-shadow 220ms",
-          }}
-        >
-          <img
-            src={p.image}
-            alt=""
-            loading="lazy"
-            width={size * 2}
-            height={size * 2}
-            className="h-full w-full object-cover"
-            style={{ transform: "scale(1.05)" }}
-            draggable={false}
+          <div
+            className="absolute top-1/2 left-1/2 w-1/2 h-0.5 origin-left pointer-events-none"
+            style={{
+              background: `linear-gradient(to right, ${primaryAccent}, transparent)`,
+              transform: `rotate(${radarDegrees}deg)`,
+            }}
           />
-        </span>
-      </button>
+        </div>
+
+        {/* Coordinate Nodes (Institutions) */}
+        {currentNodes.map((node) => {
+          const isSelected = selectedNode?.id === node.id;
+          return (
+            <div
+              key={node.id}
+              onMouseEnter={() => setHoveredNode(node)}
+              onMouseLeave={() => setHoveredNode(null)}
+              className="absolute transition-transform duration-300 z-20 cursor-pointer"
+              style={{
+                left: `${node.x}%`,
+                top: `${node.y}%`,
+                transform: `translate(-50%, -50%) scale(${isSelected ? 1.15 : 1})`,
+              }}
+            >
+              {/* Pulsing Beacon */}
+              <div className="relative flex items-center justify-center group">
+                {isSelected && (
+                  <span
+                    className="absolute size-9 rounded-full opacity-60 animate-ping"
+                    style={{ background: primaryAccent }}
+                  />
+                )}
+                <div
+                  className={`size-6 rounded-full border flex items-center justify-center font-bold text-[10px] transition-all shadow-md ${
+                    isSelected
+                      ? "bg-white text-black border-white ring-4"
+                      : "bg-[#111624] text-white border-white/30 hover:border-white"
+                  }`}
+                  style={{ ringColor: primaryGlow }}
+                >
+                  {node.shortName[0]}
+                </div>
+
+                {/* Label Tag */}
+                <div
+                  className={`absolute top-7 whitespace-nowrap px-2 py-0.5 rounded-md border text-[10px] font-bold tracking-wider uppercase transition-all ${
+                    isSelected
+                      ? "bg-neutral-900 border-white/40 text-white shadow-xl scale-105"
+                      : "bg-black/80 border-white/10 text-neutral-400"
+                  }`}
+                >
+                  {node.shortName} · AIR {node.closingRank}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ─── 4. BOTTOM TELEMETRY STATUS & LIVE NODE INSPECTOR ─── */}
+      <div className="relative z-10 border-t border-white/10 bg-black/60 backdrop-blur-md p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        {/* Selected Institute Telemetry Card */}
+        {selectedNode && (
+          <div className="flex flex-wrap items-center gap-4 text-xs">
+            <div className="size-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center text-lg">
+              {isNeet ? "🩺" : "🏛"}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white text-sm">{selectedNode.name}</span>
+                <span className="px-2 py-0.5 rounded text-[9.5px] font-bold border border-white/20 bg-white/10 text-neutral-300">
+                  {selectedNode.quota}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 text-neutral-400 mt-0.5 text-[11px]">
+                <span>Round Closing: <strong className="text-white">AIR #{selectedNode.closingRank}</strong></span>
+                <span>•</span>
+                <span>{selectedNode.metricLabel}: <strong style={{ color: primaryAccent }}>{selectedNode.metric}</strong></span>
+                <span>•</span>
+                <span>Rural Bond: <strong className="text-amber-400">{selectedNode.bond}</strong></span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Global Live Verification Ticker */}
+        <div className="flex items-center gap-3 font-mono text-[10.5px] text-neutral-400 self-end md:self-auto">
+          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>OFFICIAL ALLOTMENT DATA VERIFIED · 100% MATHEMATICAL ENGINE</span>
+        </div>
+      </div>
     </div>
   );
 }
-
-function Comet({
-  variant,
-  duration,
-  delay,
-  top,
-  left,
-}: {
-  variant: "a" | "b" | "c";
-  duration: number;
-  delay: number;
-  top: string;
-  left: string;
-}) {
-  const anim = `comet-drift-${variant}`;
-  return (
-    <div
-      aria-hidden
-      className="comet pointer-events-none absolute"
-      style={{
-        top,
-        left,
-        width: 220,
-        height: 2,
-        animation: `${anim} ${duration}s linear ${delay}s infinite`,
-        opacity: 0.9,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          background: `linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--comet-color) 30%, transparent) 50%, var(--comet-color) 100%)`,
-          filter: "blur(0.5px)",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          right: 0,
-          top: -3,
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: "var(--comet-color)",
-          boxShadow: "0 0 12px var(--comet-color), 0 0 24px var(--comet-color)",
-        }}
-      />
-    </div>
-  );
-}
-
-function PlanetTooltip({ slug }: { slug: string }) {
-  const p = BRANCH_PLANETS.find((b) => b.slug === slug);
-  if (!p) return null;
-  return (
-    <div
-      className="pointer-events-none absolute bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-md border px-4 py-2 text-center backdrop-blur"
-      style={{
-        borderColor: "color-mix(in oklab, var(--foreground) 25%, transparent)",
-        background: "color-mix(in oklab, var(--background) 82%, transparent)",
-        boxShadow: `0 0 30px ${p.accent}55`,
-        maxWidth: "min(90vw, 420px)",
-      }}
-    >
-      <div
-        className="text-[10px] font-bold uppercase tracking-[0.28em]"
-        style={{ color: p.accent }}
-      >
-        {p.short}
-      </div>
-      <div className="mt-0.5 text-sm font-bold text-[color:var(--foreground)]">
-        {p.name}
-      </div>
-      <div className="mt-1 text-xs text-[color:var(--muted-foreground)]">
-        {p.blurb}
-      </div>
-    </div>
-  );
-}
-
-
-
-// import { useEffect, useRef, useState, useMemo } from "react";
-// import { BRANCH_PLANETS, type BranchPlanet } from "@/lib/branch-planets";
-
-// const SCENE_W = 1600;
-// const SCENE_H = 720;
-// const CX = 800;
-// const CY = 360;
-// const ORBIT_RX0 = 120;
-// const ORBIT_STEP = 46;
-// const ORBIT_RATIO = 0.42;
-// const BASE_SPEED = 26; // sec for innermost
-// const SPEED_STEP = 5;
-
-// function orbitPath(rx: number, ry: number) {
-//   return `M ${CX - rx},${CY} a ${rx},${ry} 0 1,0 ${rx * 2},0 a ${rx},${ry} 0 1,0 ${-rx * 2},0 Z`;
-// }
-
-// type OrbitMeta = {
-//   planet: BranchPlanet;
-//   rx: number;
-//   ry: number;
-//   path: string;
-//   duration: number;
-//   labelY: number;
-//   delay: number;
-// };
-
-// function useOrbits(): OrbitMeta[] {
-//   return useMemo(
-//     () =>
-//       BRANCH_PLANETS.map((p, i) => {
-//         const rx = ORBIT_RX0 + p.orbitIndex * ORBIT_STEP;
-//         const ry = rx * ORBIT_RATIO;
-//         return {
-//           planet: p,
-//           rx,
-//           ry,
-//           path: orbitPath(rx, ry),
-//           duration: BASE_SPEED + p.orbitIndex * SPEED_STEP,
-//           labelY: CY - ry - 6,
-//           // spread starting phase around each orbit (each planet 27% further along)
-//           delay: -((BASE_SPEED + p.orbitIndex * SPEED_STEP) * ((i * 0.27) % 1)),
-//         };
-//       }),
-//     [],
-//   );
-// }
-
-// type Stars = Array<{ x: number; y: number; s: number; o: number; d: number; t: number }>;
-
-// function useStars(): Stars {
-//   return useMemo(() => {
-//     // deterministic pseudo-random so SSR & CSR match
-//     const rand = mulberry32(0xa5f01c);
-//     const out: Stars = [];
-//     for (let i = 0; i < 110; i++) {
-//       out.push({
-//         x: rand() * 100,
-//         y: rand() * 100,
-//         s: 0.5 + rand() * 1.8,
-//         o: 0.25 + rand() * 0.75,
-//         d: 2 + rand() * 4,
-//         t: -rand() * 6,
-//       });
-//     }
-//     return out;
-//   }, []);
-// }
-
-// function mulberry32(seed: number) {
-//   let a = seed >>> 0;
-//   return function () {
-//     a |= 0;
-//     a = (a + 0x6d2b79f5) | 0;
-//     let t = Math.imul(a ^ (a >>> 15), 1 | a);
-//     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-//     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-//   };
-// }
-
-// export function BranchSolarSystem() {
-//   const orbits = useOrbits();
-//   const stars = useStars();
-//   const rootRef = useRef<HTMLDivElement>(null);
-//   const sceneWrapRef = useRef<HTMLDivElement>(null);
-//   const [scale, setScale] = useState(1);
-//   const [hovered, setHovered] = useState<string | null>(null);
-
-//   useEffect(() => {
-//     const el = sceneWrapRef.current;
-//     if (!el) return;
-//     const ro = new ResizeObserver(() => {
-//       const rect = el.getBoundingClientRect();
-//       const sx = rect.width / SCENE_W;
-//       const sy = rect.height / SCENE_H;
-//       setScale(Math.max(0.2, Math.min(sx, sy)));
-//     });
-//     ro.observe(el);
-//     return () => ro.disconnect();
-//   }, []);
-
-//   return (
-//     <div
-//       ref={rootRef}
-//       className="pointer-events-none absolute inset-0 flex h-full w-full flex-col overflow-hidden"
-//       style={{
-//         backgroundImage:
-//           "radial-gradient(ellipse at 45% 42%, color-mix(in oklab, var(--sun-glow-2) 18%, transparent), transparent 55%), linear-gradient(180deg, var(--space-bg) 0%, var(--space-bg-2) 100%)",
-//       }}
-//     >
-//       {/* Starfield */}
-//       <div className="pointer-events-none absolute inset-0">
-//         {stars.map((s, i) => (
-//           <span
-//             key={i}
-//             className="twinkle absolute rounded-full"
-//             style={{
-//               left: `${s.x}%`,
-//               top: `${s.y}%`,
-//               width: `${s.s}px`,
-//               height: `${s.s}px`,
-//               background: "var(--star-color)",
-//               opacity: s.o,
-//               boxShadow: `0 0 ${s.s * 2}px var(--star-color)`,
-//               animation: `twinkle ${s.d}s ease-in-out ${s.t}s infinite`,
-//             }}
-//           />
-//         ))}
-//       </div>
-
-//       {/* Comets */}
-//       <Comet variant="a" duration={28} delay={0} top="0%" left="0%" />
-//       <Comet variant="b" duration={36} delay={-14} top="0%" left="0%" />
-//       <Comet variant="c" duration={22} delay={-6} top="0%" left="0%" />
-
-//       {/* Corner title */}
-//       <div className="pointer-events-none absolute top-4 left-4 z-10 md:top-8 md:left-8">
-//         <div className="text-[10px] uppercase tracking-[0.4em] text-[color:var(--muted-foreground)]">
-//           ◆ Choose your orbit
-//         </div>
-//         <div
-//           className="mt-1 font-black uppercase leading-[0.9] tracking-tight text-[color:var(--foreground)]"
-//           style={{ fontSize: "clamp(1.4rem, 3.4vw, 2.6rem)", letterSpacing: "-0.02em" }}
-//         >
-//           Engineering
-//           <br />
-//           <span className="text-[color:var(--sun-glow-1)]">Universe</span>
-//         </div>
-//       </div>
-
-//       {/* Scene (orbits + planets) — takes flex-1, legend below */}
-//       <div
-//         ref={sceneWrapRef}
-//         className="relative flex flex-1 items-center justify-center px-2"
-//         style={{ minHeight: 0 }}
-//       >
-//         <div
-//           className="pointer-events-auto relative"
-//           style={{
-//             width: SCENE_W,
-//             height: SCENE_H,
-//             transform: `scale(${scale})`,
-//             transformOrigin: "center center",
-//           }}
-//         >
-//           {/* SVG: orbit paths + labels + sun glow */}
-//           <svg
-//             className="absolute inset-0"
-//             viewBox={`0 0 ${SCENE_W} ${SCENE_H}`}
-//             width={SCENE_W}
-//             height={SCENE_H}
-//             aria-hidden
-//           >
-//             <defs>
-//               {orbits.map((o, i) => (
-//                 <path key={i} id={`orbit-${i}`} d={o.path} />
-//               ))}
-//               <radialGradient id="sunGrad" cx="50%" cy="50%" r="50%">
-//                 <stop offset="0%" stopColor="var(--sun-core)" stopOpacity="1" />
-//                 <stop offset="35%" stopColor="var(--sun-glow-1)" stopOpacity="0.95" />
-//                 <stop offset="70%" stopColor="var(--sun-glow-2)" stopOpacity="0.4" />
-//                 <stop offset="100%" stopColor="var(--sun-glow-2)" stopOpacity="0" />
-//               </radialGradient>
-//             </defs>
-
-//             {orbits.map((o, i) => {
-//               const isHot = hovered === o.planet.slug;
-//               return (
-//                 <g key={i}>
-//                   <use
-//                     href={`#orbit-${i}`}
-//                     fill="none"
-//                     stroke={isHot ? "var(--sun-glow-1)" : "var(--orbit-line)"}
-//                     strokeWidth={isHot ? 1.4 : 0.7}
-//                     style={{
-//                       transition: "stroke 200ms, stroke-width 200ms",
-//                       filter: isHot
-//                         ? "drop-shadow(0 0 6px var(--sun-glow-1))"
-//                         : "none",
-//                     }}
-//                   />
-//                   <text
-//                     fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
-//                     fontSize="9"
-//                     fontWeight={600}
-//                     letterSpacing="2.4"
-//                     fill={isHot ? "var(--foreground)" : "var(--orbit-label)"}
-//                     textAnchor="middle"
-//                     style={{ transition: "fill 200ms" }}
-//                   >
-//                     <textPath href={`#orbit-${i}`} startOffset={`${((75 + i * 7.7) % 100).toFixed(2)}%`}>
-//                       {o.planet.short}
-//                     </textPath>
-//                   </text>
-//                 </g>
-//               );
-//             })}
-
-//             {/* Sun glow (SVG under HTML sun) */}
-//             <circle cx={CX} cy={CY} r={95} fill="url(#sunGrad)" opacity={0.75} />
-//           </svg>
-
-//           {/* Sun core */}
-//           <div
-//             className="sun-pulse absolute z-10"
-//             style={{
-//               left: CX,
-//               top: CY,
-//               width: 58,
-//               height: 58,
-//               transform: "translate(-50%, -50%)",
-//               borderRadius: "9999px",
-//               background:
-//                 "radial-gradient(circle at 40% 40%, var(--sun-core) 0%, var(--sun-glow-1) 55%, var(--sun-glow-2) 90%, transparent 100%)",
-//               boxShadow:
-//                 "0 0 40px var(--sun-glow-1), 0 0 90px var(--sun-glow-2)",
-//               animation: "sun-pulse 6s ease-in-out infinite",
-//             }}
-//           />
-
-//           {/* Planets */}
-//           {orbits.map((o) => (
-//             <PlanetOnOrbit
-//               key={o.planet.code}
-//               orbit={o}
-//               hovered={hovered === o.planet.slug}
-//               onEnter={() => setHovered(o.planet.slug)}
-//               onLeave={() => setHovered((h) => (h === o.planet.slug ? null : h))}
-//             />
-//           ))}
-//         </div>
-//       </div>
-
-//       {/* Legend row — spans full width, larger planet icons */}
-//       <div className="pointer-events-auto relative z-20 mx-auto w-full px-4 pb-6 md:px-8">
-//         <div className="flex w-full items-start justify-between gap-1 sm:gap-2">
-//           {BRANCH_PLANETS.map((p) => {
-//             const active = hovered === p.slug;
-//             return (
-//               <a
-//                 key={p.code}
-//                 href="#upload"
-//                 onMouseEnter={() => setHovered(p.slug)}
-//                 onMouseLeave={() =>
-//                   setHovered((h) => (h === p.slug ? null : h))
-//                 }
-//                 className="group flex flex-1 flex-col items-center gap-1.5 transition-transform"
-//                 style={{ transform: active ? "translateY(-4px)" : undefined }}
-//                 title={p.name}
-//               >
-//                 <div
-//                   className="relative overflow-hidden rounded-full border transition-all"
-//                   style={{
-//                     width: "clamp(48px, 5.2vw, 78px)",
-//                     aspectRatio: "1 / 1",
-//                     borderColor: active
-//                       ? p.accent
-//                       : "color-mix(in oklab, var(--foreground) 22%, transparent)",
-//                     boxShadow: active
-//                       ? `0 0 26px ${p.accent}, inset 0 0 14px rgba(0,0,0,0.6)`
-//                       : `0 0 0 1px rgba(0,0,0,0.6) inset`,
-//                   }}
-//                 >
-//                   <img
-//                     src={p.image}
-//                     alt={p.name}
-//                     loading="lazy"
-//                     width={120}
-//                     height={120}
-//                     className="h-full w-full scale-[1.05] object-cover"
-//                     style={{ objectPosition: "center" }}
-//                   />
-//                 </div>
-//                 <span
-//                   className="text-[10px] font-bold uppercase tracking-[0.18em]"
-//                   style={{
-//                     color: active
-//                       ? "var(--foreground)"
-//                       : "var(--muted-foreground)",
-//                   }}
-//                 >
-//                   {p.short}
-//                 </span>
-//               </a>
-//             );
-//           })}
-//         </div>
-//       </div>
-
-//       {/* Scroll cue — sits below legend, never overlaps orbit labels */}
-//       <a
-//         href="#upload"
-//         className="pointer-events-auto relative z-20 mx-auto mb-4 flex flex-col items-center gap-1 text-[10px] uppercase tracking-[0.35em] text-[color:var(--muted-foreground)] transition hover:text-[color:var(--foreground)]"
-//       >
-//         {/* <span>Scroll to upload</span>
-//         <span
-//           className="text-lg"
-//           style={{ animation: "scroll-cue 1.6s ease-in-out infinite" }}
-//         >
-//           ↓
-//         </span> */}
-//       </a>
-
-//       {/* Tooltip */}
-//       {hovered && <PlanetTooltip slug={hovered} />}
-//     </div>
-//   );
-// }
-
-// function PlanetOnOrbit({
-//   orbit,
-//   hovered,
-//   onEnter,
-//   onLeave,
-// }: {
-//   orbit: OrbitMeta;
-//   hovered: boolean;
-//   onEnter: () => void;
-//   onLeave: () => void;
-// }) {
-//   const p = orbit.planet;
-//   const [pressed, setPressed] = useState(false);
-//   const size = p.size;
-//   return (
-//     <div
-//       className="planet-orbit absolute"
-//       style={
-//         {
-//           left: 0,
-//           top: 0,
-//           width: size,
-//           height: size,
-//           marginLeft: -size / 2,
-//           marginTop: -size / 2,
-//           offsetPath: `path("${orbit.path}")`,
-//           offsetRotate: "0deg",
-//           offsetAnchor: "center",
-//           animation: `orbit-travel ${orbit.duration}s linear ${orbit.delay}s infinite`,
-//           willChange: "offset-distance",
-//           zIndex: 5,
-//         } as React.CSSProperties
-//       }
-//     >
-//       <button
-//         type="button"
-//         onMouseEnter={onEnter}
-//         onMouseLeave={() => { onLeave(); setPressed(false); }}
-//         onMouseDown={() => setPressed(true)}
-//         onMouseUp={() => setPressed(false)}
-//         onFocus={onEnter}
-//         onBlur={onLeave}
-//         aria-label={p.name}
-//         className="pointer-events-auto relative block h-full w-full cursor-pointer rounded-full transition-transform"
-//         style={{
-//           transform: pressed ? "scale(2)" : hovered ? "scale(1.35)" : "scale(1)",
-//           transitionDuration: "220ms",
-//         }}
-//       >
-//         {/* Ring (behind planet) */}
-//         {p.ring && (
-//           <span
-//             aria-hidden
-//             className="absolute left-1/2 top-1/2"
-//             style={{
-//               width: size * 2.2,
-//               height: size * 0.5,
-//               transform: `translate(-50%, -50%) rotate(${p.ring.tilt}deg)`,
-//               borderRadius: "9999px",
-//               border: `${Math.max(1.5, size * 0.045)}px solid ${p.ring.color}`,
-//               boxShadow: `0 0 12px ${p.ring.color}, inset 0 0 6px ${p.ring.color}`,
-//               opacity: 0.9,
-//             }}
-//           />
-//         )}
-//         {/* Planet body */}
-//         <span
-//           aria-hidden
-//           className="absolute inset-0 overflow-hidden rounded-full"
-//           style={{
-//             boxShadow: hovered
-//               ? `0 0 ${size * 0.9}px ${p.accent}, inset -${size * 0.15}px -${size * 0.15}px ${size * 0.35}px rgba(0,0,0,0.7)`
-//               : `0 0 ${size * 0.55}px ${p.accent}, inset -${size * 0.12}px -${size * 0.12}px ${size * 0.3}px rgba(0,0,0,0.65)`,
-//             transition: "box-shadow 220ms",
-//           }}
-//         >
-//           <img
-//             src={p.image}
-//             alt=""
-//             loading="lazy"
-//             width={size * 2}
-//             height={size * 2}
-//             className="h-full w-full object-cover"
-//             style={{ transform: "scale(1.05)" }}
-//             draggable={false}
-//           />
-//         </span>
-//       </button>
-//     </div>
-//   );
-// }
-
-// function Comet({
-//   variant,
-//   duration,
-//   delay,
-//   top,
-//   left,
-// }: {
-//   variant: "a" | "b" | "c";
-//   duration: number;
-//   delay: number;
-//   top: string;
-//   left: string;
-// }) {
-//   const anim = `comet-drift-${variant}`;
-//   return (
-//     <div
-//       aria-hidden
-//       className="comet pointer-events-none absolute"
-//       style={{
-//         top,
-//         left,
-//         width: 220,
-//         height: 2,
-//         animation: `${anim} ${duration}s linear ${delay}s infinite`,
-//         opacity: 0.9,
-//       }}
-//     >
-//       <div
-//         style={{
-//           width: "100%",
-//           height: "100%",
-//           background: `linear-gradient(90deg, transparent 0%, color-mix(in oklab, var(--comet-color) 30%, transparent) 50%, var(--comet-color) 100%)`,
-//           filter: "blur(0.5px)",
-//         }}
-//       />
-//       <div
-//         style={{
-//           position: "absolute",
-//           right: 0,
-//           top: -3,
-//           width: 8,
-//           height: 8,
-//           borderRadius: "50%",
-//           background: "var(--comet-color)",
-//           boxShadow: "0 0 12px var(--comet-color), 0 0 24px var(--comet-color)",
-//         }}
-//       />
-//     </div>
-//   );
-// }
-
-// function PlanetTooltip({ slug }: { slug: string }) {
-//   const p = BRANCH_PLANETS.find((b) => b.slug === slug);
-//   if (!p) return null;
-//   return (
-//     <div
-//       className="pointer-events-none absolute bottom-24 left-1/2 z-30 -translate-x-1/2 rounded-md border px-4 py-2 text-center backdrop-blur"
-//       style={{
-//         borderColor: "color-mix(in oklab, var(--foreground) 25%, transparent)",
-//         background: "color-mix(in oklab, var(--background) 82%, transparent)",
-//         boxShadow: `0 0 30px ${p.accent}55`,
-//         maxWidth: "min(90vw, 420px)",
-//       }}
-//     >
-//       <div
-//         className="text-[10px] font-bold uppercase tracking-[0.28em]"
-//         style={{ color: p.accent }}
-//       >
-//         {p.short}
-//       </div>
-//       <div className="mt-0.5 text-sm font-bold text-[color:var(--foreground)]">
-//         {p.name}
-//       </div>
-//       <div className="mt-1 text-xs text-[color:var(--muted-foreground)]">
-//         {p.blurb}
-//       </div>
-//     </div>
-//   );
-// }

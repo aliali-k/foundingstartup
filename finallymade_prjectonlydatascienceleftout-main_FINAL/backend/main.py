@@ -1,9 +1,17 @@
+import sys, os
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from fastapi import FastAPI, Path, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, model_validator, field_validator
 from typing import Dict, Optional, Literal
-import json, os, uuid, sys, traceback
+import json, uuid, traceback
 import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "ML_MODELS"))
 from report_generator import generate_report

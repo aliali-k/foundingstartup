@@ -1,44 +1,29 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import type { ParsedReport, CollegeResult } from "@/lib/parse-prediction-pdf";
 
-import cseImg from "@/assets/branch-cse.jpg";
-import vlsiImg from "@/assets/branch-vlsi.jpg";
-import aiImg from "@/assets/branch-ai.jpg";
-import dsImg from "@/assets/branch-ds.jpg";
-import eceImg from "@/assets/branch-ece.jpg";
-import eeImg from "@/assets/branch-ee.jpg";
-import meImg from "@/assets/branch-me.jpg";
-import civImg from "@/assets/branch-civ.jpg";
-import cheImg from "@/assets/branch-che.jpg";
-import mmeImg from "@/assets/branch-mme.jpg";
-import prodImg from "@/assets/branch-prod.jpg";
-import aeroImg from "@/assets/branch-aero.jpg";
-import mncImg from "@/assets/branch-mnc.jpg";
-
 type Branch = {
   code: string;
   name: string;
   glyph: (props: { className?: string }) => ReactElement;
-  hero: string;
   accent: string;
   color: string;
   models: string[];
 };
 
 const BRANCHES: Branch[] = [
-  { code: "CSE",  name: "Computer Science",        accent: "text-chart-1", color: "#e91e8c", glyph: CpuGlyph,         hero: cseImg,  models: ["compiler", "systems", "networks"] },
-  { code: "AI",   name: "Artificial Intelligence", accent: "text-chart-2", color: "#a8e063", glyph: BrainGlyph,       hero: aiImg,   models: ["neural net", "vision", "agents"] },
-  { code: "DS",   name: "Data Science",            accent: "text-chart-3", color: "#7c3aed", glyph: GraphGlyph,       hero: dsImg,   models: ["statistics", "dashboards", "ML"] },
-  { code: "MNC",  name: "Math & Computing",        accent: "text-chart-4", color: "#f72585", glyph: SigmaGlyph,       hero: mncImg,  models: ["proof", "optimisation", "algorithms"] },
-  { code: "ECE",  name: "Electronics",             accent: "text-chart-5", color: "#18eb90f5", glyph: ChipGlyph,        hero: eceImg,  models: ["signals", "circuits", "embedded"] },
-  { code: "VLSI", name: "VLSI Design",             accent: "text-chart-1", color: "#d63384", glyph: VlsiGlyph,        hero: vlsiImg, models: ["floorplan", "ASIC", "timing"] },
-  { code: "EE",   name: "Electrical",              accent: "text-chart-2", color: "#e07b39", glyph: TransformerGlyph, hero: eeImg,   models: ["machines", "power", "grid"] },
-  { code: "ME",   name: "Mechanical",              accent: "text-chart-3", color: "#c9a227", glyph: GearGlyph,        hero: meImg,   models: ["gears", "cars", "thermal"] },
-  { code: "CIV",  name: "Civil",                   accent: "text-chart-4", color: "#e8724a", glyph: BridgeGlyph,      hero: civImg,  models: ["bridges", "structures", "survey"] },
-  { code: "PROD", name: "Production",              accent: "text-chart-5", color: "#e63946", glyph: RobotGlyph,       hero: prodImg, models: ["robots", "assembly", "quality"] },
-  { code: "CHE",  name: "Chemical",                accent: "text-chart-1", color: "#0ab5b5", glyph: MoleculeGlyph,    hero: cheImg,  models: ["reactors", "orbitals", "process"] },
-  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-chart-2", color: "#a8d8ea", glyph: DiamondGlyph,     hero: mmeImg,  models: ["crystals", "alloys", "diamond"] },
-  { code: "AERO", name: "Aerospace",               accent: "text-chart-3", color: "#60a5fa", glyph: RocketGlyph,      hero: aeroImg, models: ["rockets", "aircraft", "CFD"] },
+  { code: "CSE",  name: "Computer Science",        accent: "text-blue-500",    color: "#3b82f6", glyph: CpuGlyph,         models: ["compiler", "systems", "networks"] },
+  { code: "AI",   name: "Artificial Intelligence", accent: "text-emerald-500", color: "#10b981", glyph: BrainGlyph,       models: ["neural net", "vision", "agents"] },
+  { code: "DS",   name: "Data Science",            accent: "text-indigo-500",  color: "#6366f1", glyph: GraphGlyph,       models: ["statistics", "dashboards", "ML"] },
+  { code: "MNC",  name: "Math & Computing",        accent: "text-cyan-500",    color: "#06b6d4", glyph: SigmaGlyph,       models: ["proof", "optimisation", "algorithms"] },
+  { code: "ECE",  name: "Electronics",             accent: "text-sky-500",     color: "#0284c7", glyph: ChipGlyph,        models: ["signals", "circuits", "embedded"] },
+  { code: "VLSI", name: "VLSI Design",             accent: "text-violet-500",  color: "#8b5cf6", glyph: VlsiGlyph,       models: ["floorplan", "ASIC", "timing"] },
+  { code: "EE",   name: "Electrical",              accent: "text-amber-500",   color: "#f59e0b", glyph: TransformerGlyph, models: ["machines", "power", "grid"] },
+  { code: "ME",   name: "Mechanical",              accent: "text-orange-500",  color: "#ea580c", glyph: GearGlyph,        models: ["gears", "cars", "thermal"] },
+  { code: "CIV",  name: "Civil",                   accent: "text-teal-500",    color: "#0d9488", glyph: BridgeGlyph,      models: ["bridges", "structures", "survey"] },
+  { code: "PROD", name: "Production",              accent: "text-blue-600",    color: "#2563eb", glyph: RobotGlyph,       models: ["robots", "assembly", "quality"] },
+  { code: "CHE",  name: "Chemical",                accent: "text-cyan-600",    color: "#0891b2", glyph: MoleculeGlyph,    models: ["reactors", "orbitals", "process"] },
+  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-slate-400",   color: "#94a3b8", glyph: DiamondGlyph,     models: ["crystals", "alloys", "diamond"] },
+  { code: "AERO", name: "Aerospace",               accent: "text-indigo-400",  color: "#818cf8", glyph: RocketGlyph,      models: ["rockets", "aircraft", "CFD"] },
 ];
 
 const STARTUPS_BY_BRANCH: Record<string, string[]> = {

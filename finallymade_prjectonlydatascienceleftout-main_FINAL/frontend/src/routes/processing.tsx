@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { PredictionProcessing } from "@/components/PredictionProcessing";
+import { NeetClinicalProcessing } from "@/components/NeetClinicalProcessing";
 import { BranchSolarSystem } from "@/components/BranchSolarSystem";
 import { ResultDashboard } from "@/components/ResultDashboard";
 import { ThemeSwitch } from "@/components/ThemeSwitch";
@@ -229,12 +230,18 @@ function Processing() {
     );
   }
 
+  const isNeetReport = report?.isNeet || report?.student?.examType?.toLowerCase().includes("neet");
+
   return (
     <div className="relative">
       {!done && (
-        <div className="cosmic-scope">
-          <PredictionProcessing parsedReport={report} onDone={() => setDone(true)} />
-        </div>
+        isNeetReport ? (
+          <NeetClinicalProcessing parsedReport={report} onDone={() => setDone(true)} />
+        ) : (
+          <div className="cosmic-scope">
+            <PredictionProcessing parsedReport={report} onDone={() => setDone(true)} />
+          </div>
+        )
       )}
       {done && <ResultDashboard parsedReport={report} onReplay={() => setDone(false)} />}
     </div>

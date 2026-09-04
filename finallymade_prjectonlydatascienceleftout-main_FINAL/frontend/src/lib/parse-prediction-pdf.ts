@@ -47,6 +47,8 @@ export interface StudentInfo {
 export interface ParsedReport {
   student: StudentInfo;
   colleges: CollegeResult[];
+  isNeet?: boolean;
+  neetResults?: any[];
 }
 
 // Group text items into lines using their y-coordinates.

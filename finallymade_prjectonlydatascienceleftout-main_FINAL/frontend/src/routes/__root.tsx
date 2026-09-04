@@ -10,6 +10,7 @@ import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { ThemeProvider } from "../components/theme-provider";
+import { ExamModeProvider } from "../lib/exam-mode-context";
 import { Navbar } from "../components/navbar";
 import { Footer } from "../components/footer";
 import { WavyBackground } from "../components/wavy-bg";
@@ -19,11 +20,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "JoSAA Predictor — JEE College Prediction Platform" },
+      { title: "JoSAA & NEET UG Predictor — India's Premier Counselling Platform" },
       {
         name: "description",
         content:
-          "JoSAA Predictor: trained on 9 years of JoSAA data. Predict your JEE Main / Advanced college and branch with zero guesswork.",
+          "Predict your JEE Main / Advanced and NEET UG medical colleges and branches with zero guesswork.",
       },
     ],
     links: [
@@ -67,7 +68,9 @@ function RootComponent() {
     return (
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <Outlet />
+          <ExamModeProvider>
+            <Outlet />
+          </ExamModeProvider>
         </ThemeProvider>
       </QueryClientProvider>
     );
@@ -76,13 +79,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <WavyBackground />
-        <Navbar />
-        <main className="page-fade" style={{ paddingTop: 44, paddingBottom: 32, height: "100vh", overflow: "hidden" }}>
-          <Outlet />
-        </main>
-        <Footer />
+        <ExamModeProvider>
+          <WavyBackground />
+          <Navbar />
+          <main className="page-fade" style={{ paddingTop: 56, minHeight: "100vh" }}>
+            <Outlet />
+          </main>
+          <Footer />
+        </ExamModeProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
 }
+
