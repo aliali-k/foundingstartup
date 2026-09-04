@@ -13,7 +13,6 @@ export const Route = createFileRoute("/")({
 /* ═══════════════════════════════════════════════════════════════════════ */
 
 type ViewMode = "table" | "kanban" | "matrix";
-type StateCode = "DL" | "MH" | "UP" | "KA" | "TN" | "RJ";
 
 export function TwentyHomePage() {
   const { mode, setMode, isNeet } = useExamMode();
@@ -21,7 +20,6 @@ export function TwentyHomePage() {
   const [activeView, setActiveView] = useState<ViewMode>("table");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [searchFilter, setSearchFilter] = useState<string>("");
-  const [activeState, setActiveState] = useState<StateCode>("DL");
   const navigate = useNavigate();
 
   // Interactive Live Score Tuner inside the Mockup
@@ -101,18 +99,6 @@ export function TwentyHomePage() {
       return matchSearch && matchCat;
     });
   }, [tableData, searchFilter, selectedCategory]);
-
-  // State Policy Database for Interactive State DME Explorer
-  const statePolicies = {
-    DL: { name: "Delhi (NCT)", gmcCount: 9, bondYears: "1 Year", bondPenalty: "₹3.0 Lakhs", ipQuota: "50% IP in MAMC/VMMC for Delhi Univ / IP Univ graduates", aiqSeats: "15% AIQ", stateSeats: "85% State Quota", highlight: "Highest clinical patient footfall in India." },
-    MH: { name: "Maharashtra", gmcCount: 38, bondYears: "1 Year", bondPenalty: "₹10.0 Lakhs Bank Guarantee", ipQuota: "Strict State Service Posting immediately post-internship", aiqSeats: "15% AIQ", stateSeats: "85% DME Maharashtra", highlight: "Mandatory rural bank guarantee required at registration." },
-    UP: { name: "Uttar Pradesh", gmcCount: 42, bondYears: "2 Years", bondPenalty: "₹10.0 Lakhs Demand Draft", ipQuota: "Government Primary Health Centers (PHC) mandatory", aiqSeats: "15% AIQ", stateSeats: "85% UPDGME", highlight: "Largest government medical seat pool in North India." },
-    KA: { name: "Karnataka", gmcCount: 32, bondYears: "1 Year", bondPenalty: "₹10.0 to ₹50.0 Lakhs (KEA Rules)", ipQuota: "Compulsory rural service act strictly enforced", aiqSeats: "15% AIQ", stateSeats: "85% KEA Bangalore", highlight: "Top private & government medical infrastructure." },
-    TN: { name: "Tamil Nadu", gmcCount: 39, bondYears: "5 Years", bondPenalty: "₹10.0 Lakhs", ipQuota: "Very strict compulsory service tenure", aiqSeats: "15% AIQ", stateSeats: "85% TN Medical Selection", highlight: "Critical caution: 5-year rural service commitment." },
-    RJ: { name: "Rajasthan", gmcCount: 26, bondYears: "2 Years", bondPenalty: "₹5.0 Lakhs", ipQuota: "State health department posting", aiqSeats: "15% AIQ", stateSeats: "85% RUHS Jaipur", highlight: "High cutoff state; choice sequencing accuracy critical." },
-  };
-
-  const currentStatePolicy = statePolicies[activeState];
 
   return (
     <div className="min-h-screen w-full bg-[#fcfcfc] dark:bg-[#0c0d0e] text-neutral-900 dark:text-neutral-100 font-sans selection:bg-neutral-900 selection:text-white transition-colors">
@@ -571,93 +557,7 @@ export function TwentyHomePage() {
       </div>
       </section>
 
-      {/* ─── 3. IN-DEPTH INTERACTIVE STATE DME BOND & QUOTA EXPLORER ─── */}
-      <section className="px-6 py-20 max-w-6xl mx-auto border-t border-neutral-200 dark:border-neutral-800">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-mono font-semibold uppercase text-neutral-400 tracking-wider">
-            State Domicile Radar
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-light text-neutral-950 dark:text-white mt-2 font-serif">
-            Interactive State DME & Bond Penalty Audit
-          </h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-2">
-            64% of aspirants lock choices without knowing state rural bonds. Select your state to inspect official DME bank guarantees.
-          </p>
-        </div>
 
-        {/* State Selection Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-          {(Object.keys(statePolicies) as StateCode[]).map((st) => (
-            <button
-              key={st}
-              onClick={() => setActiveState(st)}
-              className={`px-4 py-2 rounded-lg text-xs font-mono font-medium transition cursor-pointer border ${
-                activeState === st
-                  ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950 border-transparent shadow-xs"
-                  : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 border-neutral-200 dark:border-neutral-800 hover:border-neutral-400"
-              }`}
-            >
-              {statePolicies[st].name}
-            </button>
-          ))}
-        </div>
-
-        {/* State Policy Audit Card */}
-        <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#111214] p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-neutral-200 dark:border-neutral-800 gap-4">
-            <div>
-              <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                ACTIVE DME REGISTRATION DIRECTIVE
-              </span>
-              <h3 className="text-2xl font-bold text-neutral-950 dark:text-white mt-1">
-                {currentStatePolicy.name} — {currentStatePolicy.gmcCount} Accredited Government Colleges
-              </h3>
-              <p className="text-xs text-neutral-500 mt-1 font-mono">
-                {currentStatePolicy.highlight}
-              </p>
-            </div>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="px-4 py-2 rounded bg-neutral-950 dark:bg-white text-white dark:text-neutral-950 text-xs font-bold whitespace-nowrap self-start sm:self-center cursor-pointer"
-            >
-              Audit My State Chance →
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <span className="text-[10.5px] font-mono text-neutral-400">RURAL SERVICE TENURE</span>
-              <div className="text-lg font-bold text-neutral-900 dark:text-white font-mono mt-1">
-                {currentStatePolicy.bondYears}
-              </div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">Mandatory rural posting</div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <span className="text-[10.5px] font-mono text-amber-500">BOND PENALTY GUARANTEE</span>
-              <div className="text-lg font-bold text-amber-600 dark:text-amber-400 font-mono mt-1">
-                {currentStatePolicy.bondPenalty}
-              </div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">Bank guarantee liability</div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <span className="text-[10.5px] font-mono text-neutral-400">INTERNAL PG QUOTA</span>
-              <div className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 mt-1 leading-snug">
-                {currentStatePolicy.ipQuota}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <span className="text-[10.5px] font-mono text-neutral-400">SEAT BREAKDOWN</span>
-              <div className="text-xs font-mono text-neutral-700 dark:text-neutral-300 mt-1 space-y-1">
-                <div>• {currentStatePolicy.aiqSeats}</div>
-                <div>• {currentStatePolicy.stateSeats}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ─── 4. IN-DEPTH JOSAA & MCC CHOICE SEQUENCER ─── */}
       <section className="px-6 py-20 max-w-6xl mx-auto border-t border-neutral-200 dark:border-neutral-800">
