@@ -8,22 +8,23 @@ type Branch = {
   accent: string;
   color: string;
   models: string[];
+  hero: string;
 };
 
 const BRANCHES: Branch[] = [
-  { code: "CSE",  name: "Computer Science",        accent: "text-blue-500",    color: "#3b82f6", glyph: CpuGlyph,         models: ["compiler", "systems", "networks"] },
-  { code: "AI",   name: "Artificial Intelligence", accent: "text-emerald-500", color: "#10b981", glyph: BrainGlyph,       models: ["neural net", "vision", "agents"] },
-  { code: "DS",   name: "Data Science",            accent: "text-indigo-500",  color: "#6366f1", glyph: GraphGlyph,       models: ["statistics", "dashboards", "ML"] },
-  { code: "MNC",  name: "Math & Computing",        accent: "text-cyan-500",    color: "#06b6d4", glyph: SigmaGlyph,       models: ["proof", "optimisation", "algorithms"] },
-  { code: "ECE",  name: "Electronics",             accent: "text-sky-500",     color: "#0284c7", glyph: ChipGlyph,        models: ["signals", "circuits", "embedded"] },
-  { code: "VLSI", name: "VLSI Design",             accent: "text-violet-500",  color: "#8b5cf6", glyph: VlsiGlyph,       models: ["floorplan", "ASIC", "timing"] },
-  { code: "EE",   name: "Electrical",              accent: "text-amber-500",   color: "#f59e0b", glyph: TransformerGlyph, models: ["machines", "power", "grid"] },
-  { code: "ME",   name: "Mechanical",              accent: "text-orange-500",  color: "#ea580c", glyph: GearGlyph,        models: ["gears", "cars", "thermal"] },
-  { code: "CIV",  name: "Civil",                   accent: "text-teal-500",    color: "#0d9488", glyph: BridgeGlyph,      models: ["bridges", "structures", "survey"] },
-  { code: "PROD", name: "Production",              accent: "text-blue-600",    color: "#2563eb", glyph: RobotGlyph,       models: ["robots", "assembly", "quality"] },
-  { code: "CHE",  name: "Chemical",                accent: "text-cyan-600",    color: "#0891b2", glyph: MoleculeGlyph,    models: ["reactors", "orbitals", "process"] },
-  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-slate-400",   color: "#94a3b8", glyph: DiamondGlyph,     models: ["crystals", "alloys", "diamond"] },
-  { code: "AERO", name: "Aerospace",               accent: "text-indigo-400",  color: "#818cf8", glyph: RocketGlyph,      models: ["rockets", "aircraft", "CFD"] },
+  { code: "CSE",  name: "Computer Science",        accent: "text-blue-500",    color: "#3b82f6", glyph: CpuGlyph,         models: ["compiler", "systems", "networks"], hero: "/branch-cse.jpg" },
+  { code: "AI",   name: "Artificial Intelligence", accent: "text-emerald-500", color: "#10b981", glyph: BrainGlyph,       models: ["neural net", "vision", "agents"], hero: "/branch-ai.jpg" },
+  { code: "DS",   name: "Data Science",            accent: "text-indigo-500",  color: "#6366f1", glyph: GraphGlyph,       models: ["statistics", "dashboards", "ML"], hero: "/branch-ds.jpg" },
+  { code: "MNC",  name: "Math & Computing",        accent: "text-cyan-500",    color: "#06b6d4", glyph: SigmaGlyph,       models: ["proof", "optimisation", "algorithms"], hero: "/branch-mnc.jpg" },
+  { code: "ECE",  name: "Electronics",             accent: "text-sky-500",     color: "#0284c7", glyph: ChipGlyph,        models: ["signals", "circuits", "embedded"], hero: "/branch-ece.jpg" },
+  { code: "VLSI", name: "VLSI Design",             accent: "text-violet-500",  color: "#8b5cf6", glyph: VlsiGlyph,       models: ["floorplan", "ASIC", "timing"], hero: "/branch-vlsi.jpg" },
+  { code: "EE",   name: "Electrical",              accent: "text-amber-500",   color: "#f59e0b", glyph: TransformerGlyph, models: ["machines", "power", "grid"], hero: "/branch-ee.jpg" },
+  { code: "ME",   name: "Mechanical",              accent: "text-orange-500",  color: "#ea580c", glyph: GearGlyph,        models: ["gears", "cars", "thermal"], hero: "/branch-me.jpg" },
+  { code: "CIV",  name: "Civil",                   accent: "text-teal-500",    color: "#0d9488", glyph: BridgeGlyph,      models: ["bridges", "structures", "survey"], hero: "/branch-civ.jpg" },
+  { code: "PROD", name: "Production",              accent: "text-blue-600",    color: "#2563eb", glyph: RobotGlyph,       models: ["robots", "assembly", "quality"], hero: "/branch-prod.jpg" },
+  { code: "CHE",  name: "Chemical",                accent: "text-cyan-600",    color: "#0891b2", glyph: MoleculeGlyph,    models: ["reactors", "orbitals", "process"], hero: "/branch-che.jpg" },
+  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-slate-400",   color: "#94a3b8", glyph: DiamondGlyph,     models: ["crystals", "alloys", "diamond"], hero: "/branch-mme.jpg" },
+  { code: "AERO", name: "Aerospace",               accent: "text-indigo-400",  color: "#818cf8", glyph: RocketGlyph,      models: ["rockets", "aircraft", "CFD"], hero: "/branch-aero.jpg" },
 ];
 
 const STARTUPS_BY_BRANCH: Record<string, string[]> = {
@@ -312,13 +313,21 @@ export function PredictionProcessing({
             items={mentorRows}
             render={(m) => (
               <div className="flex items-center gap-3">
-                <img
-                  src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(m.name)}`}
-                  alt={m.name}
-                  loading="lazy"
-                  className="size-10 shrink-0 rounded-full object-cover"
+                <div
+                  className="relative flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full font-bold text-white text-xs select-none shadow-sm"
                   style={{ background: `hsl(${m.hue} 65% 45%)` }}
-                />
+                >
+                  <span className="uppercase tracking-wider">{m.initials}</span>
+                  <img
+                    src={`https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(m.name)}`}
+                    alt={m.name}
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = "none";
+                    }}
+                    className="absolute inset-0 size-full rounded-full object-cover"
+                  />
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="truncate text-sm font-bold">{m.name}</span>
@@ -439,24 +448,31 @@ function BranchFactory({ progress, activeIndex }: { progress: number; activeInde
 
       {/* <div className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border border-primary bg-background shadow-[0_0_40px_-5px_color-mix(in_oklab,var(--primary)_60%,transparent)]"> */}
       <div
-        className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border bg-background transition-colors"
+        className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border bg-background transition-colors shadow-2xl"
         style={{ borderColor: active.color, boxShadow: `0 0 40px -5px ${active.color}99` }}
       >
-        <img
-          key={active.code}
-          src={active.hero}
-          alt={`${active.name} render`}
-          loading="lazy"
-          width={1024}
-          height={1024}
-          className="absolute inset-0 size-full object-cover animate-scale-in"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-        {/* <div className="absolute bottom-2 left-0 right-0 text-center">
-          <div className="text-sm font-black text-primary drop-shadow">{active.code}</div> */}
-          <div className="absolute bottom-2 left-0 right-0 text-center">
-          <div className="text-sm font-black drop-shadow" style={{ color: active.color }}>{active.code}</div>
-          <div className="mx-auto max-w-28 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">{active.name}</div>
+        {/* Glowing fallback icon behind image */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 transition-opacity">
+          <active.glyph className="size-20" />
+        </div>
+        {active.hero && (
+          <img
+            key={active.code}
+            src={active.hero}
+            alt={`${active.name} render`}
+            loading="eager"
+            width={1024}
+            height={1024}
+            onError={(e) => {
+              (e.currentTarget as HTMLElement).style.display = "none";
+            }}
+            className="absolute inset-0 size-full object-cover animate-scale-in"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
+        <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none z-10">
+          <div className="text-sm font-black drop-shadow-md" style={{ color: active.color }}>{active.code}</div>
+          <div className="mx-auto max-w-28 text-[9px] uppercase tracking-[0.16em] text-muted-foreground font-semibold">{active.name}</div>
         </div>
       </div>
 
