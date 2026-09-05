@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: medical-prediction-backend
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: finallymade_prjectonlydatascienceleftout-main_FINAL/backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
