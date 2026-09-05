@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
 import type { ParsedReport, CollegeResult } from "@/lib/parse-prediction-pdf";
+import { BRANCH_PLANETS } from "@/lib/branch-planets";
 
 type Branch = {
   code: string;
@@ -11,20 +12,22 @@ type Branch = {
   hero: string;
 };
 
+const PLANET_MAP = new Map(BRANCH_PLANETS.map((p) => [p.code, p]));
+
 const BRANCHES: Branch[] = [
-  { code: "CSE",  name: "Computer Science",        accent: "text-blue-500",    color: "#3b82f6", glyph: CpuGlyph,         models: ["compiler", "systems", "networks"], hero: "/branch-cse.jpg" },
-  { code: "AI",   name: "Artificial Intelligence", accent: "text-emerald-500", color: "#10b981", glyph: BrainGlyph,       models: ["neural net", "vision", "agents"], hero: "/branch-ai.jpg" },
-  { code: "DS",   name: "Data Science",            accent: "text-indigo-500",  color: "#6366f1", glyph: GraphGlyph,       models: ["statistics", "dashboards", "ML"], hero: "/branch-ds.jpg" },
-  { code: "MNC",  name: "Math & Computing",        accent: "text-cyan-500",    color: "#06b6d4", glyph: SigmaGlyph,       models: ["proof", "optimisation", "algorithms"], hero: "/branch-mnc.jpg" },
-  { code: "ECE",  name: "Electronics",             accent: "text-sky-500",     color: "#0284c7", glyph: ChipGlyph,        models: ["signals", "circuits", "embedded"], hero: "/branch-ece.jpg" },
-  { code: "VLSI", name: "VLSI Design",             accent: "text-violet-500",  color: "#8b5cf6", glyph: VlsiGlyph,       models: ["floorplan", "ASIC", "timing"], hero: "/branch-vlsi.jpg" },
-  { code: "EE",   name: "Electrical",              accent: "text-amber-500",   color: "#f59e0b", glyph: TransformerGlyph, models: ["machines", "power", "grid"], hero: "/branch-ee.jpg" },
-  { code: "ME",   name: "Mechanical",              accent: "text-orange-500",  color: "#ea580c", glyph: GearGlyph,        models: ["gears", "cars", "thermal"], hero: "/branch-me.jpg" },
-  { code: "CIV",  name: "Civil",                   accent: "text-teal-500",    color: "#0d9488", glyph: BridgeGlyph,      models: ["bridges", "structures", "survey"], hero: "/branch-civ.jpg" },
-  { code: "PROD", name: "Production",              accent: "text-blue-600",    color: "#2563eb", glyph: RobotGlyph,       models: ["robots", "assembly", "quality"], hero: "/branch-prod.jpg" },
-  { code: "CHE",  name: "Chemical",                accent: "text-cyan-600",    color: "#0891b2", glyph: MoleculeGlyph,    models: ["reactors", "orbitals", "process"], hero: "/branch-che.jpg" },
-  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-slate-400",   color: "#94a3b8", glyph: DiamondGlyph,     models: ["crystals", "alloys", "diamond"], hero: "/branch-mme.jpg" },
-  { code: "AERO", name: "Aerospace",               accent: "text-indigo-400",  color: "#818cf8", glyph: RocketGlyph,      models: ["rockets", "aircraft", "CFD"], hero: "/branch-aero.jpg" },
+  { code: "CSE",  name: "Computer Science",        accent: "text-blue-500",    color: "#3b82f6", glyph: CpuGlyph,         models: ["compiler", "systems", "networks"], hero: PLANET_MAP.get("CSE")?.image ?? "" },
+  { code: "AI",   name: "Artificial Intelligence", accent: "text-emerald-500", color: "#10b981", glyph: BrainGlyph,       models: ["neural net", "vision", "agents"], hero: PLANET_MAP.get("AI")?.image ?? "" },
+  { code: "DS",   name: "Data Science",            accent: "text-indigo-500",  color: "#6366f1", glyph: GraphGlyph,       models: ["statistics", "dashboards", "ML"], hero: PLANET_MAP.get("DS")?.image ?? "" },
+  { code: "MNC",  name: "Math & Computing",        accent: "text-cyan-500",    color: "#06b6d4", glyph: SigmaGlyph,       models: ["proof", "optimisation", "algorithms"], hero: PLANET_MAP.get("MNC")?.image ?? "" },
+  { code: "ECE",  name: "Electronics",             accent: "text-sky-500",     color: "#0284c7", glyph: ChipGlyph,        models: ["signals", "circuits", "embedded"], hero: PLANET_MAP.get("ECE")?.image ?? "" },
+  { code: "VLSI", name: "VLSI Design",             accent: "text-violet-500",  color: "#8b5cf6", glyph: VlsiGlyph,       models: ["floorplan", "ASIC", "timing"], hero: PLANET_MAP.get("VLSI")?.image ?? "" },
+  { code: "EE",   name: "Electrical",              accent: "text-amber-500",   color: "#f59e0b", glyph: TransformerGlyph, models: ["machines", "power", "grid"], hero: PLANET_MAP.get("EE")?.image ?? "" },
+  { code: "ME",   name: "Mechanical",              accent: "text-orange-500",  color: "#ea580c", glyph: GearGlyph,        models: ["gears", "cars", "thermal"], hero: PLANET_MAP.get("ME")?.image ?? "" },
+  { code: "CIV",  name: "Civil",                   accent: "text-teal-500",    color: "#0d9488", glyph: BridgeGlyph,      models: ["bridges", "structures", "survey"], hero: PLANET_MAP.get("CIV")?.image ?? "" },
+  { code: "PROD", name: "Production",              accent: "text-blue-600",    color: "#2563eb", glyph: RobotGlyph,       models: ["robots", "assembly", "quality"], hero: PLANET_MAP.get("PROD")?.image ?? "" },
+  { code: "CHE",  name: "Chemical",                accent: "text-cyan-600",    color: "#0891b2", glyph: MoleculeGlyph,    models: ["reactors", "orbitals", "process"], hero: PLANET_MAP.get("CHE")?.image ?? "" },
+  { code: "MME",  name: "Materials & Metallurgy",  accent: "text-slate-400",   color: "#94a3b8", glyph: DiamondGlyph,     models: ["crystals", "alloys", "diamond"], hero: PLANET_MAP.get("MME")?.image ?? "" },
+  { code: "AERO", name: "Aerospace",               accent: "text-indigo-400",  color: "#818cf8", glyph: RocketGlyph,      models: ["rockets", "aircraft", "CFD"], hero: PLANET_MAP.get("AERO")?.image ?? "" },
 ];
 
 const STARTUPS_BY_BRANCH: Record<string, string[]> = {
@@ -130,6 +133,15 @@ export function PredictionProcessing({
   //   raf = requestAnimationFrame(tick);
   //   return () => cancelAnimationFrame(raf);
   // }, [onDone]);
+  useEffect(() => {
+    BRANCH_PLANETS.forEach((p) => {
+      if (typeof window !== "undefined" && p.image) {
+        const img = new Image();
+        img.src = p.image;
+      }
+    });
+  }, []);
+
   useEffect(() => {
     const start = performance.now();
     let raf = 0;
@@ -448,31 +460,48 @@ function BranchFactory({ progress, activeIndex }: { progress: number; activeInde
 
       {/* <div className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border border-primary bg-background shadow-[0_0_40px_-5px_color-mix(in_oklab,var(--primary)_60%,transparent)]"> */}
       <div
-        className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-lg border bg-background transition-colors shadow-2xl"
-        style={{ borderColor: active.color, boxShadow: `0 0 40px -5px ${active.color}99` }}
+        className="absolute left-1/2 top-1/2 z-10 flex size-44 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center overflow-hidden rounded-xl border bg-background/95 backdrop-blur-md transition-all duration-300 shadow-2xl"
+        style={{ borderColor: active.color, boxShadow: `0 0 45px -5px ${active.color}80` }}
       >
-        {/* Glowing fallback icon behind image */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-20 transition-opacity">
-          <active.glyph className="size-20" />
-        </div>
-        {active.hero && (
+        {/* Holographic radial ambient aura */}
+        <div
+          className="absolute inset-0 opacity-25 blur-xl transition-all duration-500 pointer-events-none"
+          style={{ background: `radial-gradient(circle at center, ${active.color} 0%, transparent 75%)` }}
+        />
+
+        {/* 3D Planet Render */}
+        {active.hero ? (
           <img
             key={active.code}
             src={active.hero}
-            alt={`${active.name} render`}
+            alt=""
+            aria-hidden="true"
             loading="eager"
-            width={1024}
-            height={1024}
+            className="relative z-10 size-28 object-contain transition-transform duration-500 animate-scale-in"
+            style={{
+              filter: `drop-shadow(0 0 20px ${active.color}66) drop-shadow(0 10px 15px rgba(0,0,0,0.5))`,
+            }}
             onError={(e) => {
               (e.currentTarget as HTMLElement).style.display = "none";
             }}
-            className="absolute inset-0 size-full object-cover animate-scale-in"
           />
+        ) : (
+          <div className="relative z-10 flex items-center justify-center">
+            <active.glyph className="size-16 opacity-80" />
+          </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent pointer-events-none" />
-        <div className="absolute bottom-2 left-0 right-0 text-center pointer-events-none z-10">
-          <div className="text-sm font-black drop-shadow-md" style={{ color: active.color }}>{active.code}</div>
-          <div className="mx-auto max-w-28 text-[9px] uppercase tracking-[0.16em] text-muted-foreground font-semibold">{active.name}</div>
+
+        {/* Gradient shadow for text readability */}
+        <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none z-20" />
+
+        {/* Branch labels */}
+        <div className="absolute bottom-2.5 left-0 right-0 text-center pointer-events-none z-30">
+          <div className="text-sm font-black tracking-wider drop-shadow" style={{ color: active.color }}>
+            {active.code}
+          </div>
+          <div className="mx-auto max-w-32 px-1 text-[9px] uppercase tracking-[0.16em] text-muted-foreground font-semibold truncate">
+            {active.name}
+          </div>
         </div>
       </div>
 
