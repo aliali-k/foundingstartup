@@ -10,12 +10,14 @@ import {
   getReport,
   setReport,
   setReportPdf,
+  setReportPdfId,
   getPendingPredictPayload,
   clearPendingPredictPayload,
 } from "@/lib/prediction-store";
 import { parsePredictionPdf, type ParsedReport } from "@/lib/parse-prediction-pdf";
 
-const API_BASE = "http://localhost:8000";
+const RENDER_BACKEND_URL = "https://medical-prediction-backend.onrender.com";
+const API_BASE = (import.meta.env.VITE_PREDICTION_API_URL || RENDER_BACKEND_URL).replace(/\/+$/, "");
 // Keeps the cinematic solar-system screen on-screen for a sane minimum time
 // even if the backend responds instantly.
 const MIN_DISPLAY_MS = 4000;
@@ -63,9 +65,11 @@ function Processing() {
       body: JSON.stringify(pending),
     })
       .then((res) => {
-        if (res.headers.get("content-type") !== "application/pdf") {
-          throw new Error("Prediction failed");
+        if (!res.ok || res.headers.get("content-type") !== "application/pdf") {
+          throw new Error(`Prediction failed with status: ${res.status}`);
         }
+        const pdfId = res.headers.get("x-pdf-id") || res.headers.get("X-PDF-ID");
+        if (pdfId) setReportPdfId(pdfId);
         return res.blob();
       })
       .then(async (blob) => {
@@ -90,7 +94,7 @@ function Processing() {
         const elapsed = Date.now() - startedAt;
         const remaining = Math.max(0, MIN_DISPLAY_MS - elapsed);
         setTimeout(() => {
-          setUploadError("Could not generate your prediction report. Is the backend running on :8000?");
+          setUploadError("Could not generate your prediction report from the prediction engine. Please verify inputs or try again.");
           setAutoBusy(false);
         }, remaining);
       });
